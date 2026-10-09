@@ -31,7 +31,9 @@
   function keyOf(r) { return r.target + '|' + r.items.slice().sort().join(','); }
 
   function start(root, App) {
-    var level = (App.age && App.age() === 'toddler') ? 'easy' : 'medium';
+    var age = App.age ? App.age() : Ages.defaultKey;
+    var level = (Ages.normalize(age) === 'toddler') ? 'easy' : 'medium';
+    var maxIndex = Ages.levelIndex(age);
     var TOTAL = 6;
     var round = 0;
     var firstTry = 0;
@@ -41,6 +43,7 @@
 
     var adaptive = new Adaptive({
       level: level,
+      maxIndex: maxIndex,
       onChange: function (nl) { level = nl; }
     });
 

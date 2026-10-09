@@ -40,12 +40,22 @@
     ];
   }
 
+  // Доступные возрасту уровни сложности (для набора «идеально пройдено»).
+  function gameLevels() {
+    if (global.Ages && global.Ages.levels) {
+      var age = (global.App && global.App.age) ? global.App.age() : undefined;
+      return global.Ages.levels(age);
+    }
+    return ['easy', 'medium', 'hard'];
+  }
+
   function gameList() {
     if (global.App && global.App.games && global.App.games.length) {
+      var levels = gameLevels();
       var list = (global.App.visibleGames ? global.App.visibleGames() : global.App.games);
       return list
         .filter(function (g) { return !g.noStars; })
-        .map(function (g) { return { id: g.id, titleKey: g.titleKey }; });
+        .map(function (g) { return { id: g.id, titleKey: g.titleKey, levels: levels }; });
     }
     return [];
   }
@@ -64,7 +74,7 @@
         desc: t('ach.first.desc', { game: gname }),
         ok: function (c) { return !!(c.stats[g.id] && c.stats[g.id].plays > 0); }
       });
-      ['easy', 'medium', 'hard'].forEach(function (lv) {
+      g.levels.forEach(function (lv) {
         var lname = t('common.' + lv);
         list.push({
           id: 'perfect.' + g.id + '.' + lv,

@@ -15,6 +15,9 @@
     this.level = LEVELS[indexOf(opts.level)];
     this.upStreak = opts.upStreak || 3;   // сколько успехов подряд для повышения
     this.downFails = opts.downFails || 2; // сколько ошибок для понижения
+    // Верхний доступный уровень (младшим возрастам «сложно» недоступно).
+    this.maxIndex = (typeof opts.maxIndex === 'number') ? opts.maxIndex : LEVELS.length - 1;
+    if (indexOf(this.level) > this.maxIndex) this.level = LEVELS[this.maxIndex];
     this.onChange = opts.onChange || function () {};
     this.streak = 0;
     this.fails = 0;
@@ -29,7 +32,7 @@
 
   Adaptive.prototype._shift = function (dir) {
     var j = indexOf(this.level) + dir;
-    j = Math.max(0, Math.min(LEVELS.length - 1, j));
+    j = Math.max(0, Math.min(this.maxIndex, j));
     var changed = j !== indexOf(this.level);
     this.reset();
     if (!changed) return false;
@@ -54,7 +57,10 @@
   };
 
   // Для игр с одним полем (память, сортировка): соседний уровень.
-  Adaptive.up = function (level) { return LEVELS[Math.min(LEVELS.length - 1, indexOf(level) + 1)]; };
+  Adaptive.up = function (level, maxIndex) {
+    var hi = (typeof maxIndex === 'number') ? maxIndex : LEVELS.length - 1;
+    return LEVELS[Math.min(hi, indexOf(level) + 1)];
+  };
   Adaptive.down = function (level) { return LEVELS[Math.max(0, indexOf(level) - 1)]; };
   Adaptive.LEVELS = LEVELS;
 

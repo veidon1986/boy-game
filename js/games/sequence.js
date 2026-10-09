@@ -29,11 +29,27 @@
     ]
   };
 
-  function makeRound(diff) {
-    var type;
-    if (diff === 'easy') type = UI.pick(['repeat2', 'repeat2', 'step1', 'chain']);
-    else if (diff === 'medium') type = UI.pick(['repeat2', 'repeat3', 'step', 'step', 'chain']);
-    else type = UI.pick(['repeat3', 'step', 'stepBack', 'chain', 'chain']);
+  function pickType(age, diff) {
+    var a = Ages.normalize(age);
+    if (a === 'preschool') {
+      return diff === 'easy'
+        ? UI.pick(['repeat2', 'repeat2', 'step', 'chain'])
+        : UI.pick(['repeat2', 'repeat2', 'step', 'chain', 'chain']);
+    }
+    if (a === 'school') {
+      if (diff === 'easy') return UI.pick(['repeat2', 'repeat2', 'step', 'chain']);
+      if (diff === 'medium') return UI.pick(['repeat2', 'repeat3', 'step', 'stepBack', 'chain']);
+      return UI.pick(['repeat3', 'step', 'step', 'stepBack', 'chain']);
+    }
+    // junior (5–6) — как раньше
+    if (diff === 'easy') return UI.pick(['repeat2', 'repeat2', 'step1', 'chain']);
+    if (diff === 'medium') return UI.pick(['repeat2', 'repeat3', 'step', 'step', 'chain']);
+    return UI.pick(['repeat3', 'step', 'stepBack', 'chain', 'chain']);
+  }
+
+  function makeRound(diff, age) {
+    var a = Ages.normalize(age);
+    var type = pickType(age, diff);
 
     if (type === 'repeat2' || type === 'repeat3') {
       var unitLen = type === 'repeat2' ? 2 : 3;
@@ -57,12 +73,13 @@
         start = type === 'stepBack' ? UI.randInt(4, 6) : UI.randInt(1, 3);
         count = 4;
       } else if (diff === 'medium') {
-        step = type === 'stepBack' ? -1 : UI.pick([1, 1, 2]);
-        start = step > 0 ? UI.randInt(1, 5) : UI.randInt(6, 10);
+        var bigMed = a === 'school';
+        step = type === 'stepBack' ? -1 : (bigMed ? UI.pick([1, 2, 2]) : 1);
+        start = step > 0 ? UI.randInt(1, bigMed ? 7 : 5) : UI.randInt(bigMed ? 8 : 6, bigMed ? 12 : 10);
         count = 4;
       } else {
-        step = UI.pick([2, 3, -1, -2]);
-        start = step > 0 ? UI.randInt(1, 6) : UI.randInt(8, 14);
+        step = a === 'school' ? UI.pick([2, 3, 4, -2, -3]) : UI.pick([2, 3, -1, -2]);
+        start = step > 0 ? UI.randInt(1, a === 'school' ? 8 : 6) : UI.randInt(8, a === 'school' ? 18 : 14);
         count = 4;
       }
       for (var i = 0; i < count; i++) nums.push(start + i * step);
@@ -79,7 +96,8 @@
     }
 
     // chain: причинно-следственная цепочка
-    var chain = UI.pick(CHAINS[diff] || CHAINS.easy);
+    var chainDiff = (a === 'preschool' && diff === 'medium') ? 'easy' : diff;
+    var chain = UI.pick(CHAINS[chainDiff] || CHAINS.easy);
     var tiles = chain.slice();
     var answerEmoji = tiles.pop();
     tiles.push(null);
@@ -93,6 +111,8 @@
   }
 
   function start(root, App) {
+    var age = App.age();
+    var maxIndex = Ages.levelIndex(age);
     var level = 'easy';
     var TOTAL = 5;
     var round = 0;
@@ -104,6 +124,7 @@
 
     var adaptive = new Adaptive({
       level: level,
+      maxIndex: maxIndex,
       onChange: function (nl, why) {
         level = nl;
         if (difficulty) difficulty._setActive(nl);
@@ -113,11 +134,9 @@
 
     root.appendChild(el('p', { class: 'game-hint' }, t('game.sequence.hint')));
 
-    var difficulty = UI.segmented([
-      { value: 'easy', label: t('common.easy') },
-      { value: 'medium', label: t('common.medium') },
-      { value: 'hard', label: t('common.hard') }
-    ], level, function (v) { level = v; adaptive.setLevel(v); newSession(); });
+    var difficulty = UI.segmented(Ages.levels(age).map(function (lv) {
+      return { value: lv, label: t('common.' + lv) };
+    }), level, function (v) { level = v; adaptive.setLevel(v); newSession(); });
 
     var progress = el('div', { class: 'game-stats' });
     var stage = el('div', { class: 'seq-stage' });
@@ -127,7 +146,7 @@
     root.appendChild(stage);
 
     function newSession() {
-      gen = UI.uniqueGenerator(function () { return makeRound(level); }, keyOf, 60);
+      gen = UI.uniqueGenerator(function () { return makeRound(level, age); }, keyOf, 60);
       lastTag = null;
       round = 0; firstTry = 0;
       adaptive.reset();

@@ -8,11 +8,25 @@
                '🐔', '🐙', '🦄', '🐢', '🍎', '🍌', '🍓', '⭐',
                '🚗', '🚀', '⚽', '🌸'];
 
+  // Базовые параметры (5–6 лет); для других возрастов настраиваются ниже.
   var LEVELS = {
     easy:   { pairs: 3, cols: 3 },
     medium: { pairs: 6, cols: 4 },
     hard:   { pairs: 8, cols: 4 }
   };
+
+  // Возрастная калибровка: младшим — меньше пар, старшим — больше.
+  var PAIRS_BY_AGE = {
+    preschool: { easy: 3, medium: 4 },
+    junior:    { easy: 3, medium: 6, hard: 8 },
+    school:    { easy: 4, medium: 8, hard: 10 }
+  };
+
+  function configFor(age, level) {
+    var table = PAIRS_BY_AGE[Ages.normalize(age)] || PAIRS_BY_AGE.junior;
+    var pairs = table[level] !== undefined ? table[level] : LEVELS[level].pairs;
+    return { pairs: pairs, cols: pairs <= 3 ? 3 : 4 };
+  }
 
   function starsForMoves(moves, pairs) {
     if (moves <= Math.ceil(pairs * 1.5)) return 3;
@@ -21,6 +35,8 @@
   }
 
   function start(root, App) {
+    var age = App.age();
+    var maxIndex = Ages.levelIndex(age);
     var level = 'easy';
     var cards = [];
     var first = null;
@@ -32,11 +48,9 @@
 
     root.appendChild(el('p', { class: 'game-hint' }, t('game.memory.hint')));
 
-    var difficulty = UI.segmented([
-      { value: 'easy', label: t('common.easy') },
-      { value: 'medium', label: t('common.medium') },
-      { value: 'hard', label: t('common.hard') }
-    ], level, function (v) { level = v; build(); });
+    var difficulty = UI.segmented(Ages.levels(age).map(function (lv) {
+      return { value: lv, label: t('common.' + lv) };
+    }), level, function (v) { level = v; build(); });
 
     var stats = el('div', { class: 'game-stats' });
     var pairsLeft = el('span', { class: 'stat' });
@@ -51,14 +65,14 @@
     root.appendChild(board);
 
     function updateStats() {
-      pairsLeft.textContent = t('game.memory.pairs') + ': ' + (LEVELS[level].pairs - matched);
+      pairsLeft.textContent = t('game.memory.pairs') + ': ' + (configFor(age, level).pairs - matched);
       movesStat.textContent = t('game.memory.moves') + ': ' + moves;
     }
 
     function build() {
       if (timer) { clearTimeout(timer); timer = null; }
       first = null; locked = false; matched = 0; moves = 0;
-      var cfg = LEVELS[level];
+      var cfg = configFor(age, level);
       board.style.setProperty('--cols', cfg.cols);
 
       // Набор эмодзи не повторяет предыдущее поле.
@@ -110,7 +124,7 @@
         matched++;
         first = null;
         updateStats();
-        if (matched === LEVELS[level].pairs) {
+        if (matched === configFor(age, level).pairs) {
           setTimeout(finish, 650);
         }
       } else {
@@ -134,7 +148,7 @@
     }
 
     function finish() {
-      var cfg = LEVELS[level];
+      var cfg = configFor(age, level);
       var playedLevel = level;
       var stars = starsForMoves(moves, cfg.pairs);
       var mistakes = moves - cfg.pairs; // лишние ходы = промахи
@@ -142,7 +156,7 @@
       // Адаптация: чисто прошёл — сложнее; много промахов — проще.
       var upAllowance = cfg.pairs >= 6 ? 1 : 0;
       var target = level;
-      if (mistakes <= upAllowance) target = Adaptive.up(level);
+      if (mistakes <= upAllowance) target = Adaptive.up(level, maxIndex);
       else if (mistakes >= cfg.pairs) target = Adaptive.down(level);
 
       var note = null;

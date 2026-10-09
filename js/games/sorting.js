@@ -12,24 +12,46 @@
     square:    { labelKey: 'cat.square',    emoji: '⬜', items: ['🟦', '🟥', '🟩', '🟪', '🟧', '🟨'] }
   };
 
+  // Базовые параметры (5–6 лет); для других возрастов настраиваются ниже.
   var LEVELS = {
     easy:   { cats: 2, total: 6 },
     medium: { cats: 3, total: 9 },
     hard:   { cats: 3, total: 12 }
   };
 
-  function chooseCategories(k) {
+  // Возрастная калибровка: младшим — меньше групп, старшим — больше.
+  var CFG_BY_AGE = {
+    preschool: { easy: { cats: 2, total: 6 }, medium: { cats: 2, total: 8 } },
+    junior:    { easy: { cats: 2, total: 6 }, medium: { cats: 3, total: 9 }, hard: { cats: 3, total: 12 } },
+    school:    { easy: { cats: 3, total: 9 }, medium: { cats: 3, total: 12 }, hard: { cats: 4, total: 16 } }
+  };
+
+  function configFor(age, level) {
+    var table = CFG_BY_AGE[Ages.normalize(age)] || CFG_BY_AGE.junior;
+    return table[level] || LEVELS[level];
+  }
+
+  function chooseCategories(k, age) {
+    // Младшим — только наглядные темы (животные/еда/транспорт), без абстрактных фигур.
+    var main = ['animals', 'food', 'transport'];
+    var preschool = Ages.normalize(age) === 'preschool';
     if (k === 2) {
-      if (Math.random() < 0.4) return ['round', 'square'];
-      return UI.sample(['animals', 'food', 'transport'], 2);
+      if (!preschool && Math.random() < 0.4) return ['round', 'square'];
+      return UI.sample(main, 2);
     }
-    if (Math.random() < 0.4) {
-      return UI.shuffle(['round', 'square', UI.pick(['animals', 'food', 'transport'])]);
+    if (k === 3) {
+      if (!preschool && Math.random() < 0.4) {
+        return UI.shuffle(['round', 'square', UI.pick(main)]);
+      }
+      return UI.shuffle(main);
     }
-    return UI.shuffle(['animals', 'food', 'transport']);
+    // k === 4: три наглядные темы + одна фигурная
+    return UI.shuffle(main.concat([UI.pick(['round', 'square'])]));
   }
 
   function start(root, App) {
+    var age = App.age();
+    var maxIndex = Ages.levelIndex(age);
     var level = 'easy';
     var selected = null;
     var placed = 0;
@@ -39,11 +61,9 @@
 
     root.appendChild(el('p', { class: 'game-hint' }, t('game.sorting.hint')));
 
-    var difficulty = UI.segmented([
-      { value: 'easy', label: t('common.easy') },
-      { value: 'medium', label: t('common.medium') },
-      { value: 'hard', label: t('common.hard') }
-    ], level, function (v) { level = v; build(); });
+    var difficulty = UI.segmented(Ages.levels(age).map(function (lv) {
+      return { value: lv, label: t('common.' + lv) };
+    }), level, function (v) { level = v; build(); });
 
     var stats = el('div', { class: 'game-stats' });
     var stage = el('div', { class: 'sort-stage' });
@@ -56,12 +76,12 @@
       selected = null; placed = 0; mistakes = 0;
       UI.clear(stage);
 
-      var cfg = LEVELS[level];
+      var cfg = configFor(age, level);
 
       // Набор групп не повторяет предыдущее поле.
       var catIds, sig, tries = 0;
       do {
-        catIds = chooseCategories(cfg.cats);
+        catIds = chooseCategories(cfg.cats, age);
         sig = catIds.slice().sort().join(',');
         tries++;
       } while (sig === lastCats && tries < 20);
@@ -168,7 +188,7 @@
 
       // Адаптация: без ошибок — сложнее; много ошибок — проще.
       var target = level;
-      if (mistakes === 0) target = Adaptive.up(level);
+      if (mistakes === 0) target = Adaptive.up(level, maxIndex);
       else if (mistakes >= Math.ceil(total / 2)) target = Adaptive.down(level);
 
       var note = null;

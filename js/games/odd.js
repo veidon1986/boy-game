@@ -25,13 +25,24 @@
     { core: ['🌳', '🌸', '🌿', '🌻', '🌷', '🌵'], odd: ['🍄', '🪨', '🌊'] }
   ];
 
-  function makeRound(diff) {
-    var count = diff === 'easy' ? UI.randInt(3, 4)
-              : diff === 'medium' ? UI.randInt(4, 5)
-              : UI.randInt(5, 6);
+  function countRange(age, diff) {
+    var a = Ages.normalize(age);
+    if (a === 'preschool') {
+      return diff === 'easy' ? [3, 3] : [3, 4];
+    }
+    if (a === 'school') {
+      return diff === 'easy' ? [4, 5] : (diff === 'medium' ? [5, 6] : [6, 7]);
+    }
+    // junior (5–6) — как раньше
+    return diff === 'easy' ? [3, 4] : (diff === 'medium' ? [4, 5] : [5, 6]);
+  }
+
+  function makeRound(diff, age) {
+    var r = countRange(age, diff);
+    var count = UI.randInt(r[0], r[1]);
 
     var core, odd, tag;
-    if (diff === 'hard') {
+    if (diff === 'hard' && Ages.normalize(age) !== 'preschool') {
       var fi = UI.randInt(0, FAMILIES.length - 1);
       var fam = FAMILIES[fi];
       core = UI.sample(fam.core, count - 1);
@@ -58,6 +69,8 @@
   function keyOf(r) { return r.tag + '|' + r.items.slice().sort().join(',') + '|' + r.answer; }
 
   function start(root, App) {
+    var age = App.age();
+    var maxIndex = Ages.levelIndex(age);
     var level = 'easy';
     var TOTAL = 5;
     var round = 0;
@@ -69,6 +82,7 @@
 
     var adaptive = new Adaptive({
       level: level,
+      maxIndex: maxIndex,
       onChange: function (nl, why) {
         level = nl;
         if (difficulty) difficulty._setActive(nl);
@@ -78,11 +92,9 @@
 
     root.appendChild(el('p', { class: 'game-hint' }, t('game.odd.hint')));
 
-    var difficulty = UI.segmented([
-      { value: 'easy', label: t('common.easy') },
-      { value: 'medium', label: t('common.medium') },
-      { value: 'hard', label: t('common.hard') }
-    ], level, function (v) {
+    var difficulty = UI.segmented(Ages.levels(age).map(function (lv) {
+      return { value: lv, label: t('common.' + lv) };
+    }), level, function (v) {
       level = v;
       adaptive.setLevel(v);
       TOTAL = v === 'hard' ? 6 : 5;
@@ -97,7 +109,7 @@
     root.appendChild(stage);
 
     function newSession() {
-      gen = UI.uniqueGenerator(function () { return makeRound(level); }, keyOf, 60);
+      gen = UI.uniqueGenerator(function () { return makeRound(level, age); }, keyOf, 60);
       lastTag = null;
       round = 0; firstTry = 0;
       adaptive.reset();
