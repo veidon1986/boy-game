@@ -237,6 +237,7 @@
 
   App.register({
     id: 'math',
+    ages: ['preschool', 'junior', 'school'],
     emoji: '➕',
     titleKey: 'game.math',
     descKey: 'game.math.desc',

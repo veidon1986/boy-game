@@ -24,10 +24,25 @@
   }
   App.gameById = gameById;
 
-  // Число игр, которые дают звёзды (аркады вроде «Дракончика» не в счёт).
+  // Возраст активного ребёнка.
+  App.age = function () {
+    var p = Store.profile();
+    return Ages.normalize(p && p.age);
+  };
+
+  // Игры, подходящие возрасту активного ребёнка.
+  App.visibleGames = function () {
+    var age = App.age();
+    return games.filter(function (g) {
+      return !g.ages || g.ages.indexOf(age) >= 0;
+    });
+  };
+
+  // Число игр со звёздами для текущего возраста (аркады вроде «Дракончика» не в счёт).
   function scoringGames() {
+    var list = App.visibleGames();
     var n = 0;
-    for (var i = 0; i < games.length; i++) if (!games[i].noStars) n++;
+    for (var i = 0; i < list.length; i++) if (!list[i].noStars) n++;
     return n;
   }
 
@@ -87,10 +102,33 @@
       value: name
     });
 
+    var age = Ages.normalize(cur.age);
+    var ageNodes = [];
+    var ageRow = el('div', { class: 'age-row' });
+    Ages.list.forEach(function (a) {
+      var b = el('button', {
+        type: 'button',
+        class: 'age-opt' + (a.key === age ? ' active' : ''),
+        onclick: function () {
+          Sound.play('tap');
+          age = a.key;
+          ageNodes.forEach(function (n) { n.classList.toggle('active', n._k === a.key); });
+        }
+      }, [
+        el('span', { class: 'age-emoji' }, a.emoji),
+        el('span', { class: 'age-range' }, a.range + ' ' + t('age.years'))
+      ]);
+      b._k = a.key;
+      ageNodes.push(b);
+      ageRow.appendChild(b);
+    });
+
     var form = el('div', { class: 'profile-form' }, [
       el('div', { class: 'avatar-preview-wrap' }, preview),
       el('label', { class: 'field-label' }, t('welcome.nameLabel')),
       nameInput,
+      el('label', { class: 'field-label' }, t('age.label')),
+      ageRow,
       el('label', { class: 'field-label' }, t('welcome.avatarLabel')),
       grid
     ]);
@@ -99,7 +137,8 @@
       el: form,
       input: nameInput,
       getName: function () { return (nameInput.value || '').trim() || t('welcome.defaultName'); },
-      getAvatar: function () { return avatar; }
+      getAvatar: function () { return avatar; },
+      getAge: function () { return age; }
     };
   }
 
@@ -112,7 +151,7 @@
       el('button', {
         type: 'button', class: 'btn primary wide',
         onclick: function () {
-          Store.setProfile({ name: f.getName(), avatar: f.getAvatar(), createdAt: Date.now() });
+          Store.setProfile({ name: f.getName(), avatar: f.getAvatar(), age: f.getAge(), createdAt: Date.now() });
           Sound.play('win');
           App.hideOverlay();
           App.renderHome();
@@ -135,7 +174,7 @@
         el('button', {
           type: 'button', class: 'btn primary',
           onclick: function () {
-            Store.setProfile({ name: f.getName(), avatar: f.getAvatar(), createdAt: (Store.profile() || {}).createdAt || Date.now() });
+            Store.setProfile({ name: f.getName(), avatar: f.getAvatar(), age: f.getAge(), createdAt: (Store.profile() || {}).createdAt || Date.now() });
             Sound.play('win');
             App.hideOverlay();
             App.renderHome();
@@ -176,7 +215,7 @@
         el('span', { class: 'kid-avatar' }, p.avatar || '🙂'),
         el('span', { class: 'kid-info' }, [
           el('span', { class: 'kid-name' }, name + (isActive ? ' · ' + t('profiles.active') : '')),
-          el('span', { class: 'kid-sub' }, sum.rank.icon + ' ' + sum.rank.name + ' · ⭐ ' + sum.stars)
+          el('span', { class: 'kid-sub' }, Ages.label(p.age) + ' · ' + sum.rank.icon + ' ' + sum.rank.name + ' · ⭐ ' + sum.stars)
         ])
       ]);
 
@@ -230,7 +269,7 @@
           type: 'button', class: 'btn primary',
           onclick: function () {
             var name = f.getName();
-            Store.addProfile(name, f.getAvatar());
+            Store.addProfile(name, f.getAvatar(), f.getAge());
             App.resetLimitState();
             Sound.play('win');
             App.hideOverlay();
@@ -282,7 +321,10 @@
       el('span', { class: 'profile-avatar' }, prof.avatar || '🙂'),
       el('span', { class: 'profile-info' }, [
         el('span', { class: 'profile-name' }, t('home.greeting', { name: prof.name || t('welcome.defaultName') })),
-        el('span', { class: 'profile-rank' }, r.icon + ' ' + t('home.rankLabel') + ': ' + r.name)
+        el('span', { class: 'profile-tags' }, [
+          el('span', { class: 'profile-rank' }, r.icon + ' ' + t('home.rankLabel') + ': ' + r.name),
+          el('span', { class: 'profile-age' }, Ages.label(prof.age))
+        ])
       ]),
       el('span', { class: 'profile-edit' }, '✏️')
     ]);
@@ -351,7 +393,7 @@
     wrap.appendChild(el('p', { class: 'home-subtitle' }, t('home.subtitle')));
 
     var grid = el('div', { class: 'game-grid' });
-    games.forEach(function (g) {
+    App.visibleGames().forEach(function (g) {
       var locked = g.requires && !Achievements.hasRank(g.requires);
       var st = Store.gameStats(g.id);
       var card = el('button', {

@@ -232,6 +232,7 @@
 
   App.register({
     id: 'runner',
+    ages: ['junior', 'school'],
     emoji: '🐉',
     titleKey: 'game.runner',
     descKey: 'game.runner.desc',

@@ -54,6 +54,7 @@
         id: id,
         name: legacy.name || '',
         avatar: legacy.avatar || '🙂',
+        age: 'junior',
         createdAt: legacy.createdAt || Date.now()
       });
       r.activeId = id;
@@ -104,23 +105,31 @@
     if (cur) {
       cur.name = p.name;
       cur.avatar = p.avatar;
+      if (p.age) cur.age = p.age;
       if (p.createdAt) cur.createdAt = p.createdAt;
     } else {
       var id = newId();
-      r.list.push({ id: id, name: p.name, avatar: p.avatar, createdAt: p.createdAt || Date.now() });
+      r.list.push({ id: id, name: p.name, avatar: p.avatar, age: p.age || 'junior', createdAt: p.createdAt || Date.now() });
       r.activeId = id;
     }
     saveRegistry(r);
     return profile();
   }
 
-  function addProfile(name, avatar) {
+  function addProfile(name, avatar, age) {
     var r = registry();
     var id = newId();
-    r.list.push({ id: id, name: name, avatar: avatar, createdAt: Date.now() });
+    r.list.push({ id: id, name: name, avatar: avatar, age: age || 'junior', createdAt: Date.now() });
     r.activeId = id;
     saveRegistry(r);
     return findById(r, id);
+  }
+
+  function setAge(age) {
+    var r = registry();
+    var cur = r.activeId ? findById(r, r.activeId) : null;
+    if (cur) { cur.age = age; saveRegistry(r); }
+    return profile();
   }
 
   function switchProfile(id) {
@@ -303,6 +312,7 @@
     profile: profile,
     setProfile: setProfile,
     addProfile: addProfile,
+    setAge: setAge,
     switchProfile: switchProfile,
     removeProfile: removeProfile,
 

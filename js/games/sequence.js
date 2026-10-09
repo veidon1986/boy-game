@@ -203,6 +203,7 @@
 
   App.register({
     id: 'sequence',
+    ages: ['preschool', 'junior', 'school'],
     emoji: '🔢',
     titleKey: 'game.sequence',
     descKey: 'game.sequence.desc',

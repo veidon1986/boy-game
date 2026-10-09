@@ -492,6 +492,40 @@ button { font-family: inherit; cursor: pointer; }
 .odd-item.correct { background: var(--good); animation: pop .35s; }
 .odd-item.wrong { background: var(--bad); animation: shake .4s; }
 
+/* ---------- Игра «Найди такого же» (малыши) ---------- */
+.find-stage { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 8px; }
+.find-target {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: #fff; border-radius: 24px; padding: 12px 26px;
+  box-shadow: var(--shadow-sm);
+}
+.find-target-label { font-size: 18px; opacity: .6; }
+.find-target-emoji { font-size: 76px; line-height: 1; }
+.find-arrow { font-size: 24px; opacity: .5; }
+.find-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.find-item {
+  width: 88px; height: 88px; border-radius: 22px; border: 3px solid transparent;
+  background: #f5f3fc; font-size: 48px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .12s, border-color .2s, background .2s;
+}
+.find-item:active { transform: scale(.92); }
+.find-item.correct { background: var(--good); animation: pop .35s; }
+.find-item.wrong { background: var(--bad); animation: shake .4s; }
+
+/* ---------- Игра «Найди слово» (школьники) ---------- */
+.words-stage { display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 8px; }
+.words-picture { font-size: 84px; line-height: 1; }
+.words-options { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 420px; }
+.words-option {
+  border: 2px solid #e3dff5; background: #fff; color: var(--ink);
+  font-size: 22px; font-weight: 800; padding: 14px 16px; border-radius: 16px;
+  transition: transform .12s, border-color .2s, background .2s;
+}
+.words-option:active { transform: scale(.97); }
+.words-option.correct { background: var(--good); border-color: var(--good); color: #fff; animation: pop .35s; }
+.words-option.wrong { background: var(--bad); border-color: var(--bad); color: #fff; animation: shake .4s; }
+
 /* ---------- Оверлей результата ---------- */
 
 .overlay {
@@ -596,6 +630,11 @@ button { font-family: inherit; cursor: pointer; }
   font-size: 13px; font-weight: 700; color: var(--primary);
   background: #f1eefe; border-radius: 999px; padding: 3px 10px; width: fit-content;
 }
+.profile-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.profile-age {
+  font-size: 13px; font-weight: 700; color: #8a6d1b;
+  background: #fff6d8; border-radius: 999px; padding: 3px 10px; width: fit-content;
+}
 .profile-edit { font-size: 20px; opacity: .5; }
 
 .profile-badges-label {
@@ -660,6 +699,20 @@ button { font-family: inherit; cursor: pointer; }
 }
 .avatar-opt:active { transform: scale(.9); }
 .avatar-opt.active { border-color: var(--primary); background: #fff; transform: scale(1.05); }
+
+/* ---------- Возраст ребёнка ---------- */
+.age-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 4px; }
+.age-opt {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 10px 4px; border-radius: 14px; border: 2px solid transparent;
+  background: #f5f3fc; color: var(--ink);
+  transition: transform .12s, border-color .2s, background .2s;
+}
+.age-opt:active { transform: scale(.94); }
+.age-opt.active { border-color: var(--primary); background: #fff; transform: scale(1.05); }
+.age-emoji { font-size: 26px; line-height: 1; }
+.age-range { font-size: 12px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+.age-opt.active .age-range { color: var(--primary); }
 
 .onboarding-emoji { font-size: 52px; line-height: 1; }
 .onboarding-title { font-size: 22px; font-weight: 800; margin: 6px 0 4px; }

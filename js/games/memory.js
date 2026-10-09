@@ -162,6 +162,7 @@
 
   App.register({
     id: 'memory',
+    ages: ['preschool', 'junior', 'school'],
     emoji: '🧠',
     titleKey: 'game.memory',
     descKey: 'game.memory.desc',

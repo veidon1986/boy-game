@@ -187,6 +187,7 @@
 
   App.register({
     id: 'sorting',
+    ages: ['preschool', 'junior', 'school'],
     emoji: '🧩',
     titleKey: 'game.sorting',
     descKey: 'game.sorting.desc',

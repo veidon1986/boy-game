@@ -162,6 +162,7 @@
 
   App.register({
     id: 'odd',
+    ages: ['preschool', 'junior', 'school'],
     emoji: '🔍',
     titleKey: 'game.odd',
     descKey: 'game.odd.desc',

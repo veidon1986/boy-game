@@ -38,6 +38,10 @@
       'welcome.start': 'Начать!',
       'welcome.defaultName': 'Друг',
 
+      'age.label': 'Возраст',
+      'age.years': 'лет',
+      'age.hint': 'Игры подбираются по возрасту ребёнка',
+
       'profile.title': 'Профиль',
       'profile.save': 'Сохранить',
       'profile.cancel': 'Отмена',
@@ -63,6 +67,12 @@
       'ach.stars8.desc': 'Собрано 8 звёзд',
       'ach.stars15.title': 'Звёздный герой!',
       'ach.stars15.desc': 'Собраны все 15 звёзд',
+      'ach.stars1.title': 'Первые звёзды!',
+      'ach.stars1.desc': 'Собрано звёзд: {n}',
+      'ach.stars2.title': 'Копилка звёзд',
+      'ach.stars2.desc': 'Собрано звёзд: {n}',
+      'ach.stars3.title': 'Звёздный герой!',
+      'ach.stars3.desc': 'Все звёзды собраны: {n}',
       'ach.allgames.title': 'Все игры пройдены',
       'ach.allgames.desc': 'Ты поиграл во все игры',
 
@@ -146,6 +156,14 @@
       'game.odd.desc': 'Найди предмет, который не подходит',
       'game.odd.hint': 'Найди лишний предмет',
 
+      'game.find': 'Найди такого же',
+      'game.find.desc': 'Найди картинку, как у меня',
+      'game.find.hint': 'Нажми на такую же картинку',
+
+      'game.words': 'Найди слово',
+      'game.words.desc': 'Прочитай и выбери подходящее слово',
+      'game.words.hint': 'Какое слово подходит к картинке?',
+
       'cat.animals': 'Животные',
       'cat.food': 'Еда',
       'cat.transport': 'Транспорт',
@@ -193,6 +211,10 @@
       'welcome.start': 'Start!',
       'welcome.defaultName': 'Friend',
 
+      'age.label': 'Age',
+      'age.years': 'yrs',
+      'age.hint': 'Games are chosen for the child’s age',
+
       'profile.title': 'Profile',
       'profile.save': 'Save',
       'profile.cancel': 'Cancel',
@@ -218,6 +240,12 @@
       'ach.stars8.desc': 'Collected 8 stars',
       'ach.stars15.title': 'Star hero!',
       'ach.stars15.desc': 'All 15 stars collected',
+      'ach.stars1.title': 'First stars!',
+      'ach.stars1.desc': 'Stars collected: {n}',
+      'ach.stars2.title': 'Star piggy bank',
+      'ach.stars2.desc': 'Stars collected: {n}',
+      'ach.stars3.title': 'Star hero!',
+      'ach.stars3.desc': 'All stars collected: {n}',
       'ach.allgames.title': 'All games completed',
       'ach.allgames.desc': 'You played every game',
 
@@ -300,6 +328,14 @@
       'game.odd': 'What’s Odd?',
       'game.odd.desc': 'Find the item that does not belong',
       'game.odd.hint': 'Find the odd one out',
+
+      'game.find': 'Find the Same',
+      'game.find.desc': 'Find the picture that matches mine',
+      'game.find.hint': 'Tap the matching picture',
+
+      'game.words': 'Find the Word',
+      'game.words.desc': 'Read and choose the right word',
+      'game.words.hint': 'Which word matches the picture?',
 
       'cat.animals': 'Animals',
       'cat.food': 'Food',

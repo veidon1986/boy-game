@@ -12,15 +12,38 @@
     { min: 21, icon: '👑', key: 'rank.genius' }
   ];
 
-  var STAR_MILESTONES = [
-    { id: 'stars.3',  icon: '🌟', need: 3,  titleKey: 'ach.stars3.title',  descKey: 'ach.stars3.desc' },
-    { id: 'stars.8',  icon: '✨', need: 8,  titleKey: 'ach.stars8.title',  descKey: 'ach.stars8.desc' },
-    { id: 'stars.15', icon: '💫', need: 15, titleKey: 'ach.stars15.title', descKey: 'ach.stars15.desc' }
+  var STAR_SLOTS = [
+    { id: 'stars.3',  icon: '🌟', titleKey: 'ach.stars1.title', descKey: 'ach.stars1.desc' },
+    { id: 'stars.8',  icon: '✨', titleKey: 'ach.stars2.title', descKey: 'ach.stars2.desc' },
+    { id: 'stars.15', icon: '💫', titleKey: 'ach.stars3.title', descKey: 'ach.stars3.desc' }
   ];
+
+  function scoringGameCount() {
+    if (global.App && global.App.visibleGames) {
+      return global.App.visibleGames().filter(function (g) { return !g.noStars; }).length;
+    }
+    return 0;
+  }
+
+  // Пороги звёздных наград зависят от возраста: считаем от максимума звёзд.
+  // Для «старого» набора (5 игр × 3 = 15) получается прежний ряд 3 / 8 / 15.
+  function starMilestones() {
+    var max = Math.max(3, scoringGameCount() * 3);
+    var a = Math.max(1, Math.round(max * 0.2));
+    var b = Math.round(max * (8 / 15));
+    if (b <= a) b = a + 1;
+    if (b >= max) b = max - 1;
+    return [
+      { id: STAR_SLOTS[0].id, icon: STAR_SLOTS[0].icon, need: a, titleKey: STAR_SLOTS[0].titleKey, descKey: STAR_SLOTS[0].descKey },
+      { id: STAR_SLOTS[1].id, icon: STAR_SLOTS[1].icon, need: b, titleKey: STAR_SLOTS[1].titleKey, descKey: STAR_SLOTS[1].descKey },
+      { id: STAR_SLOTS[2].id, icon: STAR_SLOTS[2].icon, need: max, titleKey: STAR_SLOTS[2].titleKey, descKey: STAR_SLOTS[2].descKey }
+    ];
+  }
 
   function gameList() {
     if (global.App && global.App.games && global.App.games.length) {
-      return global.App.games
+      var list = (global.App.visibleGames ? global.App.visibleGames() : global.App.games);
+      return list
         .filter(function (g) { return !g.noStars; })
         .map(function (g) { return { id: g.id, titleKey: g.titleKey }; });
     }
@@ -56,12 +79,12 @@
       });
     });
 
-    STAR_MILESTONES.forEach(function (m) {
+    starMilestones().forEach(function (m) {
       list.push({
         id: m.id,
         icon: m.icon,
-        title: t(m.titleKey),
-        desc: t(m.descKey),
+        title: t(m.titleKey, { n: m.need }),
+        desc: t(m.descKey, { n: m.need }),
         ok: function (c) { return c.totalStars >= m.need; }
       });
     });
@@ -110,7 +133,13 @@
     return out;
   }
 
-  function count() { return Store.achievementCount(); }
+  function count() {
+    // Считаем только награды, актуальные для текущего возраста.
+    var unlocked = Store.achievements();
+    var n = 0;
+    defs().forEach(function (d) { if (unlocked[d.id]) n++; });
+    return n;
+  }
   function total() { return defs().length; }
 
   function rankFor(n) {

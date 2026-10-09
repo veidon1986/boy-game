@@ -1,11 +1,12 @@
 /* sw.js — офлайн-кэш приложения (service worker). */
-const CACHE = 'boygame-v14';
+const CACHE = 'boygame-v15';
 const ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
   './css/styles.css',
   './js/i18n.js',
+  './js/ages.js',
   './js/store.js',
   './js/audio.js',
   './js/ui.js',
@@ -18,6 +19,8 @@ const ASSETS = [
   './js/games/sorting.js',
   './js/games/math.js',
   './js/games/odd.js',
+  './js/games/find.js',
+  './js/games/words.js',
   './js/games/runner.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
