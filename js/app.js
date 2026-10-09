@@ -123,15 +123,20 @@
       ageRow.appendChild(b);
     });
 
-    var form = el('div', { class: 'profile-form' }, [
+    var formChildren = [
       el('div', { class: 'avatar-preview-wrap' }, preview),
       el('label', { class: 'field-label' }, t('welcome.nameLabel')),
       nameInput,
       el('label', { class: 'field-label' }, t('age.label')),
-      ageRow,
-      el('label', { class: 'field-label' }, t('welcome.avatarLabel')),
-      grid
-    ]);
+      ageRow
+    ];
+    if (cur.ageLocked) {
+      formChildren.push(el('div', { class: 'age-hint' }, '🔒 ' + t('age.parentOnly')));
+    }
+    formChildren.push(el('label', { class: 'field-label' }, t('welcome.avatarLabel')));
+    formChildren.push(grid);
+
+    var form = el('div', { class: 'profile-form' }, formChildren);
 
     return {
       el: form,
@@ -161,8 +166,29 @@
     App.showOverlay(body);
   };
 
-  App.editProfile = function () {
-    var f = profileForm();
+  App.editProfile = function (init) {
+    var cur = Store.profile() || {};
+    var initial = init || {
+      name: cur.name,
+      avatar: cur.avatar,
+      age: Ages.normalize(cur.age),
+      ageLocked: true
+    };
+    initial.ageLocked = true;
+    var f = profileForm(initial);
+
+    function doSave() {
+      Store.setProfile({
+        name: f.getName(),
+        avatar: f.getAvatar(),
+        age: f.getAge(),
+        createdAt: (Store.profile() || {}).createdAt || Date.now()
+      });
+      Sound.play('win');
+      App.hideOverlay();
+      App.renderHome();
+    }
+
     var body = el('div', { class: 'onboarding' }, [
       el('div', { class: 'onboarding-title' }, t('profile.title')),
       f.el,
@@ -174,10 +200,14 @@
         el('button', {
           type: 'button', class: 'btn primary',
           onclick: function () {
-            Store.setProfile({ name: f.getName(), avatar: f.getAvatar(), age: f.getAge(), createdAt: (Store.profile() || {}).createdAt || Date.now() });
-            Sound.play('win');
-            App.hideOverlay();
-            App.renderHome();
+            var pending = { name: f.getName(), avatar: f.getAvatar(), age: f.getAge() };
+            var changedAge = pending.age !== Ages.normalize((Store.profile() || {}).age);
+            if (changedAge) {
+              // Смена возраста — только с подтверждением родителя.
+              App.showParentsGate(doSave, function () { App.editProfile(pending); });
+            } else {
+              doSave();
+            }
           }
         }, t('profile.save'))
       ])

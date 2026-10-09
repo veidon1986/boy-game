@@ -41,6 +41,7 @@
       'age.label': 'Возраст',
       'age.years': 'лет',
       'age.hint': 'Игры подбираются по возрасту ребёнка',
+      'age.parentOnly': 'Смена возраста — только для родителей',
 
       'profile.title': 'Профиль',
       'profile.save': 'Сохранить',
@@ -214,6 +215,7 @@
       'age.label': 'Age',
       'age.years': 'yrs',
       'age.hint': 'Games are chosen for the child’s age',
+      'age.parentOnly': 'Changing age is parent-only',
 
       'profile.title': 'Profile',
       'profile.save': 'Save',

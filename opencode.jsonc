@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // Безопасность деплоя: любая команда `git push` требует подтверждения.
+  // Пуш в main автоматически публикует сайт на GitHub Pages.
+  // Последнее совпавшее правило побеждает, поэтому широкое allow идёт первым.
+  "permissions": [
+    { "action": "shell", "resource": "*", "effect": "allow" },
+    { "action": "shell", "resource": "git push *", "effect": "ask" }
+  ]
+}
