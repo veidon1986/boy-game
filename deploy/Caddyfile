@@ -1,0 +1,16 @@
+# Альтернатива nginx — Caddy с автоматическим HTTPS.
+# Замените YOUR_DOMAIN на свой домен и скопируйте в /etc/caddy/Caddyfile
+
+YOUR_DOMAIN, www.YOUR_DOMAIN {
+    root * /var/www/boygame
+    file_server
+
+    encode gzip
+
+    # Manifest с правильным типом
+    header /manifest.webmanifest Content-Type application/manifest+json
+
+    # Не кэшировать service worker и главную
+    header /sw.js Cache-Control "no-cache, no-store, must-revalidate"
+    header /index.html Cache-Control "no-cache"
+}

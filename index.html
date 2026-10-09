@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#7b5cff" />
+  <meta name="description" content="Простые развивающие игры для детей: память, логика, последовательности и счёт." />
+  <title>Игры для детей</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Игры" />
+
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <button id="homeBtn" class="icon-btn hidden" type="button" aria-label="home">🏠</button>
+      <h1 id="title">Игры</h1>
+      <span class="grow"></span>
+      <button id="soundBtn" class="icon-btn" type="button" aria-label="sound">🔊</button>
+      <button id="langBtn" class="icon-btn lang-btn" type="button" aria-label="language">RU</button>
+    </header>
+    <main id="screen" class="screen"></main>
+  </div>
+
+  <div id="overlay" class="overlay hidden"></div>
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="js/i18n.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/adaptive.js"></script>
+  <script src="js/achievements.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/games/memory.js"></script>
+  <script src="js/games/sequence.js"></script>
+  <script src="js/games/sorting.js"></script>
+  <script src="js/games/math.js"></script>
+  <script src="js/games/odd.js"></script>
+  <script src="js/games/runner.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
