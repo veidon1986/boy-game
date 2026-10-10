@@ -179,8 +179,63 @@
     return 0;
   }
 
+  function defsForContext(ctx, age) {
+    var list = [];
+    var games = (global.App && global.App.visibleGames) ? global.App.visibleGames() : (global.App && global.App.games || []);
+    var gl = games.filter(function (g) { return !g.noStars; }).map(function (g) { return { id: g.id, titleKey: g.titleKey }; });
+    if (!ctx) ctx = context();
+    gl.forEach(function (g) {
+      var gname = t(g.titleKey);
+      list.push({
+        id: 'first.' + g.id, icon: '🎉',
+        title: t('ach.first.title', { game: gname }),
+        desc: t('ach.first.desc', { game: gname }),
+        ok: function (c) { return !!(c.stats[g.id] && c.stats[g.id].plays > 0); }
+      });
+      ['easy','medium','hard'].forEach(function (lv) {
+        var lname = t('common.' + lv);
+        list.push({
+          id: 'perfect.' + g.id + '.' + lv, icon: '⭐',
+          title: t('ach.perfect.title', { game: gname, level: lname }),
+          desc: t('ach.perfect.desc', { game: gname, level: lname }),
+          ok: function (c) {
+            var s = c.stats[g.id]; return !!(s && s[lv] && s[lv].stars >= 3);
+          }
+        });
+      });
+    });
+    var milestones = (function () {
+      var max = Math.max(3, scoringGameCount() * 3);
+      var a = Math.max(1, Math.round(max * 0.2));
+      var b = Math.round(max * (8 / 15));
+      if (b <= a) b = a + 1;
+      if (b >= max) b = max - 1;
+      return [
+        { id: STAR_SLOTS[0].id, icon: STAR_SLOTS[0].icon, need: a, titleKey: STAR_SLOTS[0].titleKey, descKey: STAR_SLOTS[0].descKey },
+        { id: STAR_SLOTS[1].id, icon: STAR_SLOTS[1].icon, need: b, titleKey: STAR_SLOTS[1].titleKey, descKey: STAR_SLOTS[1].descKey },
+        { id: STAR_SLOTS[2].id, icon: STAR_SLOTS[2].icon, need: max, titleKey: STAR_SLOTS[2].titleKey, descKey: STAR_SLOTS[2].descKey }
+      ];
+    })();
+    milestones.forEach(function (m) {
+      list.push({
+        id: m.id, icon: m.icon,
+        title: t(m.titleKey, { n: m.need }),
+        desc: t(m.descKey, { n: m.need }),
+        ok: function (c) { return c.totalStars >= m.need; }
+      });
+    });
+    list.push({
+      id: 'allgames', icon: '🏅', title: t('ach.allgames.title'), desc: t('ach.allgames.desc'),
+      ok: function (c) {
+        return gl.length > 0 && gl.every(function (g) { return c.stats[g.id] && c.stats[g.id].plays > 0; });
+      }
+    });
+    return list;
+  }
+
   global.Achievements = {
     defs: defs,
+    defsForContext: defsForContext,
     all: all,
     checkNew: checkNew,
     count: count,

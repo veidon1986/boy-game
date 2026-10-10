@@ -803,6 +803,7 @@
     App.els.homeBtn = document.getElementById('homeBtn');
     App.els.soundBtn = document.getElementById('soundBtn');
     App.els.langBtn = document.getElementById('langBtn');
+    App.els.adminBtn = document.getElementById('adminBtn');
     App.els.screen = document.getElementById('screen');
     App.els.overlay = document.getElementById('overlay');
     App.els.toast = document.getElementById('toast');
@@ -828,6 +829,13 @@
       if (on) Sound.play('tap');
       App.toast(on ? t('sound.on') : t('sound.off'), 1200);
     });
+
+    if (App.els.adminBtn) {
+      App.els.adminBtn.addEventListener('click', function () {
+        Sound.play('tap');
+        App.showAdminAuth();
+      });
+    }
 
     var unlock = function () {
       Sound.unlock();

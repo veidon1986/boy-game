@@ -715,6 +715,8 @@ button { font-family: inherit; cursor: pointer; }
 .age-opt.active .age-range { color: var(--primary); }
 .age-hint { margin-top: 6px; font-size: 12.5px; font-weight: 700; color: var(--muted); text-align: center; }
 
+.ach-desc { font-size: 12.5px; color: var(--muted); line-height: 1.4; white-space: pre-wrap; }
+
 .onboarding-emoji { font-size: 52px; line-height: 1; }
 .onboarding-title { font-size: 22px; font-weight: 800; margin: 6px 0 4px; }
 

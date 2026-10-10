@@ -271,7 +271,21 @@
 
   /* ---------- Те же данные, но для произвольного профиля (для экрана «Дети») ---------- */
 
-  function statsFor(id) { return get(dataKey(id, 'stats'), {}); }
+  function allStatsFor(id) { return get(dataKey(id, 'stats'), {}); }
+  function achievementsFor(id) { return get(dataKey(id, 'achievements'), {}); }
+  function totalStarsFor(id) {
+    var all = allStatsFor(id);
+    var sum = 0;
+    for (var k in all) { if (Object.prototype.hasOwnProperty.call(all, k)) sum += (all[k].stars || 0); }
+    return sum;
+  }
+  function limitMinutesFor(id) { return get(dataKey(id, 'limitMinutes'), 0); }
+  function remainingSecondsFor(id) {
+    if (limitMinutesFor(id) <= 0) return Infinity;
+    var today = todayKey();
+    var used = get(dataKey(id, 'usage.' + today), 0);
+    return Math.max(0, limitMinutesFor(id) * 60 - used);
+  }
   function achievementsFor(id) { return get(dataKey(id, 'achievements'), {}); }
   function bestFor(id, game) { return (get(dataKey(id, 'best'), {})[game]) || 0; }
   function limitFor(id) {
@@ -332,14 +346,18 @@
     resetUsage: resetUsage,
     remainingSeconds: remainingSeconds,
 
-    statsFor: statsFor,
+    statsFor: allStatsFor,
     achievementsFor: achievementsFor,
+    allStatsFor: allStatsFor,
     bestFor: bestFor,
     limitFor: limitFor,
     setLimitFor: setLimitFor,
     totalStarsFor: totalStarsFor,
     usageFor: usageFor,
     resetUsageFor: resetUsageFor,
+    limitMinutesFor: limitMinutesFor,
+    remainingSecondsFor: remainingSecondsFor,
+    dataKey: dataKey,
 
     reset: reset
   };
