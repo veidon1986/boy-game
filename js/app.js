@@ -675,6 +675,73 @@
     App.renderHome();
   };
 
+  
+  /* ---------- Админ-панель (только администратор) ---------- */
+
+  var ADMIN_PASS = 'boygame-admin';
+  var ADMIN_KEY = 'boygame.adminUntil';
+
+  function isAdmin() {
+    var v = Store.get(ADMIN_KEY, 0);
+    return !!v && Date.now() < Number(v);
+  }
+
+  function adminLogin(pass) {
+    if (pass === ADMIN_PASS) {
+      Store.set(ADMIN_KEY, Date.now() + 60 * 60 * 1000);
+      return true;
+    }
+    return false;
+  }
+
+  function adminLogout() {
+    Store.remove(ADMIN_KEY);
+  }
+
+  App.showAdminAuth = function () {
+    var passInput = UI.el('input', {
+      class: 'name-input',
+      type: 'password',
+      autocomplete: 'current-password',
+      placeholder: 'Пароль администратора'
+    });
+    var body = UI.el('div', { class: 'onboarding' }, [
+      UI.el('div', { class: 'onboarding-emoji' }, '🔐'),
+      UI.el('div', { class: 'onboarding-title' }, 'Админ-панель'),
+      UI.el('label', { class: 'field-label' }, 'Введите пароль'),
+      passInput,
+      UI.el('div', { class: 'result-actions' }, [
+        UI.el('button', { type: 'button', class: 'btn', onclick: function () { Sound.play('tap'); App.hideOverlay(); } }, t('profile.cancel')),
+        UI.el('button', { type: 'button', class: 'btn primary', onclick: function () {
+          Sound.play('tap');
+          if (adminLogin(passInput.value)) {
+            App.hideOverlay();
+            App.openAdmin();
+          } else {
+            passInput.value = '';
+            App.toast('Неверный пароль', 1600);
+          }
+        } }, 'Войти')
+      ])
+    ]);
+    App.showOverlay(body);
+    setTimeout(function () { try { passInput.focus(); } catch (e) {} }, 50);
+  };
+
+  App.openAdmin = function () {
+    if (!isAdmin()) { App.showAdminAuth(); return; }
+    if (App.cleanup) { try { App.cleanup(); } catch (e) {} App.cleanup = null; }
+    App.mode = 'achievements';
+    App.current = null;
+    if (typeof refreshTopbar === 'function') refreshTopbar();
+    var screen = App.els.screen;
+    UI.clear(screen);
+    screen.scrollTop = 0;
+    var wrap = UI.el('div', { class: 'ach-screen' });
+    screen.appendChild(wrap);
+  };
+
+
   /* ---------- Экран наград ---------- */
 
   App.openAchievements = function () {
