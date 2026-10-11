@@ -778,24 +778,10 @@ button { font-family: inherit; cursor: pointer; }
 }
 .home-badge-alert { background: rgba(255, 90, 90, .45); }
 
-/* Баннер установки PWA */
-.install-banner {
-  width: 100%; max-width: 640px; margin: 0 auto 12px;
-  background: linear-gradient(135deg, #7b5cff 0%, #5f7cff 100%);
-  color: #fff;
-  padding: 14px 16px;
-  border-radius: 14px;
-  box-shadow: 0 6px 16px rgba(123, 92, 255, 0.35);
-  backdrop-filter: blur(8px);
-}
-
-.install-banner .result-actions { gap: 8px; }
-.install-banner .btn {
-  background: rgba(255,255,255,0.18);
-  border: 1px solid rgba(255,255,255,0.35);
-  color: #fff;
-  font-size: 13px;
-  padding: 10px 12px;
+/* Всплывающее окно установки PWA */
+.install-modal-text {
+  font-size: 15px; line-height: 1.5; text-align: center;
+  color: var(--ink); opacity: .85; margin: 4px 0 6px;
 }
 
 .parents-btn {
