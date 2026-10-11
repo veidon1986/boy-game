@@ -402,10 +402,32 @@
       wrap.appendChild(el('div', { class: 'limit-banner' }, '🌙 ' + t('limit.up')));
     }
 
-    // Баннер установки — в самом верху главного экрана, в зоне видимости
-    if (installBannerEl) {
-      wrap.appendChild(installBannerEl);
-    }
+    // Подсказка установки PWA: в самом верху главного экрана, в зоне видимости.
+    // Умный текст в зависимости от платформы (Android / iOS / ПК).
+    try {
+      if (!isStandalone() && Store.get('boygame.installNever', '0') !== '1') {
+        var p = getPlatform();
+        var installText = '';
+        if (p === 'android') installText = t('install.android');
+        else if (p === 'ios') installText = t('install.ios');
+        else installText = t('install.desktop');
+        var installBannerEl = el('div', { class: 'install-banner' }, [
+          el('div', { style: 'font-weight:700;margin-bottom:6px' }, t('install.title')),
+          el('div', { style: 'font-size:13px;line-height:1.4;opacity:.9' }, installText),
+          el('div', { class: 'result-actions', style: 'margin-top:10px' }, [
+            el('button', {
+              type: 'button', class: 'btn',
+              onclick: function () { Sound.play('tap'); installBannerEl.remove(); Store.set('boygame.installNever', '1'); }
+            }, t('install.never')),
+            el('button', {
+              type: 'button', class: 'btn',
+              onclick: function () { Sound.play('tap'); installBannerEl.remove(); }
+            }, t('install.dismiss'))
+          ])
+        ]);
+        wrap.appendChild(installBannerEl);
+      }
+    } catch (e) {}
 
     wrap.appendChild(profileCard());
 
@@ -461,32 +483,6 @@
       type: 'button', class: 'parents-btn',
       onclick: function () { Sound.play('tap'); App.showParentsGate(); }
     }, '🔒 ' + t('limit.parents')));
-
-    // Подсказка установки PWA: умная в зависимости от платформы
-    var installBannerEl = null;
-    try {
-      if (!isStandalone() && Store.get('boygame.installNever', '0') !== '1') {
-        var p = getPlatform();
-        var installText = '';
-        if (p === 'android') installText = t('install.android');
-        else if (p === 'ios') installText = t('install.ios');
-        else installText = t('install.desktop');
-        installBannerEl = el('div', { class: 'install-banner' }, [
-          el('div', { style: 'font-weight:700;margin-bottom:6px' }, t('install.title')),
-          el('div', { style: 'font-size:13px;line-height:1.4;opacity:.9' }, installText),
-          el('div', { class: 'result-actions', style: 'margin-top:10px' }, [
-            el('button', {
-              type: 'button', class: 'btn',
-              onclick: function () { Sound.play('tap'); installBannerEl.remove(); Store.set('boygame.installNever', '1'); }
-            }, t('install.never')),
-            el('button', {
-              type: 'button', class: 'btn',
-              onclick: function () { Sound.play('tap'); installBannerEl.remove(); }
-            }, t('install.dismiss'))
-          ])
-        ]);
-      }
-    } catch (e) {}
 
     screen.appendChild(wrap);
   };

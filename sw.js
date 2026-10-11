@@ -1,5 +1,5 @@
 /* sw.js — офлайн-кэш приложения (service worker). */
-const CACHE = 'boygame-v17';
+const CACHE = 'boygame-v18';
 const ASSETS = [
   './',
   './index.html',
