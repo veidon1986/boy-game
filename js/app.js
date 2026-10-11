@@ -870,7 +870,6 @@
     App.els.homeBtn = document.getElementById('homeBtn');
     App.els.soundBtn = document.getElementById('soundBtn');
     App.els.langBtn = document.getElementById('langBtn');
-    App.els.adminBtn = document.getElementById('adminBtn');
     App.els.screen = document.getElementById('screen');
     App.els.overlay = document.getElementById('overlay');
     App.els.toast = document.getElementById('toast');
@@ -897,18 +896,31 @@
       App.toast(on ? t('sound.on') : t('sound.off'), 1200);
     });
 
-    if (App.els.adminBtn) {
-      App.els.adminBtn.addEventListener('click', function () {
-        Sound.play('tap');
-        App.showAdminAuth();
-      });
-    }
+
 
     var unlock = function () {
       Sound.unlock();
       document.removeEventListener('pointerdown', unlock);
     };
     document.addEventListener('pointerdown', unlock);
+
+    // Админка по URL-хешу: #admin
+    function checkAdminHash() {
+      var h = location.hash;
+      if (!h) return;
+      if (h === '#admin') {
+        try {
+          history.replaceState(null, document.title, location.pathname + location.search);
+        } catch (e) {}
+        if (isAdmin()) {
+          App.openAdmin();
+        } else {
+          App.showAdminAuth();
+        }
+      }
+    }
+    checkAdminHash();
+    window.addEventListener('hashchange', checkAdminHash);
 
     // Дневной лимит: считаем только время активной игры (без окон).
     App.warnDay = null;
