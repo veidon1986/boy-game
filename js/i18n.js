@@ -177,7 +177,13 @@
       'cat.square': 'Квадратные',
 
       'install.hint': 'Совет: добавь игру на домашний экран, чтобы играть без интернета.',
-      'install.close': 'Понятно'
+      'install.close': 'Понятно',
+      'install.title': 'Установить приложение',
+      'install.android': 'Чтобы установить приложение — нажмите ⋮ (три точки) → «Добавить на главный экран» или «Установить приложение»',
+      'install.ios': 'Чтобы установить приложение — нажмите «Поделиться» ⎙ в Safari → «На экран Домой»',
+      'install.desktop': 'Откройте эту ссылку на телефоне или планшете, чтобы установить приложение как ярлык',
+      'install.dismiss': 'Закрыть',
+      'install.never': 'Больше не показывать'
     },
     en: {
       'app.title': 'Games',
@@ -352,7 +358,13 @@
       'cat.square': 'Square',
 
       'install.hint': 'Tip: add the game to your home screen to play offline.',
-      'install.close': 'Got it'
+      'install.close': 'Got it',
+      'install.title': 'Install app',
+      'install.android': 'To install the app, tap ⋮ → Add to Home screen or Install app',
+      'install.ios': 'To install the app, tap Share ⎙ in Safari → Add to Home Screen',
+      'install.desktop': 'Open this link on your phone or tablet to install the app',
+      'install.dismiss': 'Close',
+      'install.never': 'Don’t show again'
     }
   };
 

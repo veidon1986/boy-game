@@ -457,6 +457,32 @@
       onclick: function () { Sound.play('tap'); App.showParentsGate(); }
     }, '🔒 ' + t('limit.parents')));
 
+    // Подсказка установки PWA: умная в зависимости от платформы
+    try {
+      if (!isStandalone() && Store.get('boygame.installNever', '0') !== '1') {
+        var p = getPlatform();
+        var installText = '';
+        if (p === 'android') installText = t('install.android');
+        else if (p === 'ios') installText = t('install.ios');
+        else installText = t('install.desktop');
+        var installBanner = el('div', { class: 'install-banner', style: 'margin-top:12px' }, [
+          el('div', { style: 'font-weight:700;margin-bottom:6px' }, t('install.title')),
+          el('div', { style: 'font-size:13px;line-height:1.4;opacity:.9' }, installText),
+          el('div', { class: 'result-actions', style: 'margin-top:10px' }, [
+            el('button', {
+              type: 'button', class: 'btn',
+              onclick: function () { Sound.play('tap'); installBanner.remove(); Store.set('boygame.installNever', '1'); }
+            }, t('install.never')),
+            el('button', {
+              type: 'button', class: 'btn',
+              onclick: function () { Sound.play('tap'); installBanner.remove(); }
+            }, t('install.dismiss'))
+          ])
+        ]);
+        wrap.appendChild(installBanner);
+      }
+    } catch (e) {}
+
     screen.appendChild(wrap);
   };
 
@@ -853,6 +879,23 @@
   };
 
   App.hideOverlay = function () { App.els.overlay.classList.add('hidden'); };
+
+  function isStandalone() {
+    try {
+      return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+             (window.navigator.standalone === true) ||
+             (document.referrer && document.referrer.indexOf('android-app://') === 0);
+    } catch (e) { return false; }
+  }
+
+  function getPlatform() {
+    var ua = navigator.userAgent || '';
+    var isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+    var isAndroid = /Android/i.test(ua);
+    if (isIOS) return 'ios';
+    if (isAndroid) return 'android';
+    return 'desktop';
+  }
 
   var toastTimer = null;
   App.toast = function (msg, ms) {
