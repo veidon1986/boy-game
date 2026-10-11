@@ -780,7 +780,7 @@ button { font-family: inherit; cursor: pointer; }
 
 /* Баннер установки PWA */
 .install-banner {
-  width: 100%; max-width: 640px; margin: 16px auto 8px;
+  width: 100%; max-width: 640px; margin: 0 auto 12px;
   background: linear-gradient(135deg, #7b5cff 0%, #5f7cff 100%);
   color: #fff;
   padding: 14px 16px;
