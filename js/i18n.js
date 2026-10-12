@@ -183,7 +183,30 @@
       'install.ios': 'Чтобы установить приложение — нажмите «Поделиться» ⎙ в Safari → «На экран Домой»',
       'install.desktop': 'Откройте эту ссылку на телефоне или планшете, чтобы установить приложение как ярлык',
       'install.dismiss': 'Закрыть',
-      'install.never': 'Больше не показывать'
+      'install.never': 'Больше не показывать',
+
+      'game.brain': 'Умные загадки',
+      'game.brain.desc': 'Логические уровни: думай и находи ответ',
+      'game.brain.hint': 'Выбери правильный ответ',
+      'brain.progress': 'Уровень {n} из {total}',
+      'brain.q.odd': 'Что здесь лишнее?',
+      'brain.q.count': 'Сколько предметов?',
+      'brain.q.next': 'Что должно быть дальше?',
+      'brain.q.sum': 'Сколько всего получится?',
+      'brain.q.rest': 'Сколько останется?',
+      'brain.q.bigNum': 'Какое число больше?',
+      'brain.q.smallNum': 'Какое число меньше?',
+      'brain.q.seq': 'Продолжи ряд: какое число дальше?',
+      'brain.q.fly.yes': 'Что умеет летать?',
+      'brain.q.fly.no': 'Что НЕ умеет летать?',
+      'brain.q.swim.yes': 'Кто умеет плавать?',
+      'brain.q.swim.no': 'Кто НЕ умеет плавать?',
+      'brain.q.edible.yes': 'Что можно съесть?',
+      'brain.q.edible.no': 'Что нельзя съесть?',
+      'brain.q.bigSize': 'Кто больше?',
+      'brain.q.smallSize': 'Кто меньше?',
+      'brain.victory': 'Ты прошёл все уровни!',
+      'brain.restart': 'Заново'
     },
     en: {
       'app.title': 'Games',
@@ -364,7 +387,30 @@
       'install.ios': 'To install the app, tap Share ⎙ in Safari → Add to Home Screen',
       'install.desktop': 'Open this link on your phone or tablet to install the app',
       'install.dismiss': 'Close',
-      'install.never': 'Don’t show again'
+      'install.never': 'Don’t show again',
+
+      'game.brain': 'Brain puzzles',
+      'game.brain.desc': 'Logic levels: think and find the answer',
+      'game.brain.hint': 'Choose the right answer',
+      'brain.progress': 'Level {n} of {total}',
+      'brain.q.odd': 'What is the odd one out?',
+      'brain.q.count': 'How many objects?',
+      'brain.q.next': 'What comes next?',
+      'brain.q.sum': 'How many in total?',
+      'brain.q.rest': 'How many are left?',
+      'brain.q.bigNum': 'Which number is bigger?',
+      'brain.q.smallNum': 'Which number is smaller?',
+      'brain.q.seq': 'Continue the row: which number is next?',
+      'brain.q.fly.yes': 'What can fly?',
+      'brain.q.fly.no': 'What cannot fly?',
+      'brain.q.swim.yes': 'Who can swim?',
+      'brain.q.swim.no': 'Who cannot swim?',
+      'brain.q.edible.yes': 'What can you eat?',
+      'brain.q.edible.no': 'What can you not eat?',
+      'brain.q.bigSize': 'Who is bigger?',
+      'brain.q.smallSize': 'Who is smaller?',
+      'brain.victory': 'You passed all levels!',
+      'brain.restart': 'Start over'
     }
   };
 

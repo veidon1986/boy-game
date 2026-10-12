@@ -141,7 +141,7 @@
   function removeProfile(id) {
     var r = registry();
     r.list = r.list.filter(function (p) { return p.id !== id; });
-    ['stats', 'achievements', 'best', 'usage', 'limitMinutes'].forEach(function (k) {
+    ['stats', 'achievements', 'best', 'usage', 'limitMinutes', 'brainLevel'].forEach(function (k) {
       remove('d.' + id + '.' + k);
     });
     if (r.activeId === id) r.activeId = r.list.length ? r.list[0].id : null;
@@ -231,6 +231,15 @@
     return false;
   }
 
+  /* ---------- Прогресс по уровням (игра «Умные загадки») ---------- */
+
+  function brainLevel() {
+    var v = get(dKey('brainLevel'), 1);
+    return (typeof v === 'number' && v >= 1) ? v : 1;
+  }
+
+  function setBrainLevel(n) { return set(dKey('brainLevel'), n); }
+
   /* ---------- Дневной лимит времени ---------- */
 
   function todayKey() {
@@ -312,7 +321,7 @@
   function resetUsageFor(id) { return set(dataKey(id, 'usage'), { day: todayKey(), seconds: 0 }); }
 
   function reset() {
-    ['stats', 'achievements', 'best', 'usage', 'limitMinutes'].forEach(function (k) {
+    ['stats', 'achievements', 'best', 'usage', 'limitMinutes', 'brainLevel'].forEach(function (k) {
       remove(dKey(k));
     });
   }
@@ -339,6 +348,8 @@
     achievementCount: achievementCount,
     best: best,
     setBest: setBest,
+    brainLevel: brainLevel,
+    setBrainLevel: setBrainLevel,
     limitMinutes: limitMinutes,
     setLimitMinutes: setLimitMinutes,
     usage: usage,
