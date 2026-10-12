@@ -1,12 +1,14 @@
-/* games/brain.js — «Умные загадки»: прогрессия логических уровней (аналог Brain Check).
-   Микс визуальных и текстовых загадок. Уровни детерминированы (seed = номер уровня),
-   поэтому уровень N одинаков у всех, а сложность ограничена возрастом ребёнка. */
+/* games/brain.js — «Умные загадки»: логические уровни с хитрыми загадками.
+   Главный фокус — загадки-ловушки (как в Brain Check): нестандартные вопросы
+   и неочевидные ответы. Первые уровни — простой «разогрев» для малышей
+   (найди лишнее, посчитай). Прогресс хранится в localStorage. */
 (function (global) {
   'use strict';
 
   var el = UI.el;
 
-  var TOTAL = 40;
+  var TOTAL = 30;
+  var WARMUP = 6; // первые уровни — простые, дальше — только хитрые загадки
 
   /* ---------- Детерминированный ГПСЧ (mulberry32) ---------- */
   function mulberry32(a) {
@@ -34,7 +36,7 @@
     return out.join(' ');
   }
 
-  /* ---------- Данные ---------- */
+  /* ---------- Разогрев: простые типы для первых уровней ---------- */
   var THEMES = {
     fruits:    ['🍎', '🍌', '🍓', '🍇', '🍊', '🍐', '🍑', '🍒', '🍉', '🍍'],
     animals:   ['🐶', '🐱', '🐰', '🐮', '🐸', '🐷', '🦊', '🐼', '🐔', '🐵'],
@@ -43,58 +45,14 @@
     nature:    ['🌳', '🌸', '🌿', '🍄', '🌵', '🌻', '🌷', '🌲', '🍁', '🪴']
   };
   var THEME_KEYS = Object.keys(THEMES);
-
-  // Похожие группы (для сложных «найди лишнее»).
-  var FAMILIES = [
-    { core: ['🍎', '🍌', '🍓', '🍇', '🍊', '🍐', '🍑', '🍒'], odd: ['🥕', '🥦', '🥔', '🌽', '🥒', '🫑'] },
-    { core: ['🐶', '🐱', '🐮', '🐷', '🐑', '🐔', '🐴', '🐐'], odd: ['🦁', '🐯', '🐘', '🦒', '🐻', '🐺', '🦓'] },
-    { core: ['🚗', '🚌', '🚚', '🚓', '🚕', '🚐'], odd: ['✈️', '🚁', '🚀', '⛵', '🛸'] },
-    { core: ['👕', '👖', '👗', '🧦', '🧥', '👚', '🩳', '👔'], odd: ['👟', '👞', '🥾', '🩴', '👠'] },
-    { core: ['🌳', '🌸', '🌿', '🌻', '🌷', '🌵'], odd: ['🍄', '🪨', '🌊'] }
-  ];
-
   var CIRCLES = ['🔴', '🔵', '🟢', '🟡', '🟣', '🟠', '🟤', '⚫', '⚪'];
-  var SYMS = ['🔴', '🔵', '🟢', '🟡', '🔺', '🔻', '⭐', '⬛', '⬜', '🟣', '🟠'];
 
-  // Категории «кто/что умеет» и «что можно».
-  var CATS = [
-    { qYes: 'brain.q.fly.yes', qNo: 'brain.q.fly.no',
-      yes: ['🐦', '🦅', '🦋', '🐝', '✈️', '🚁', '🛸', '🪁', '🐞', '🦇'],
-      no:  ['🐟', '🐶', '🚗', '🪨', '🐢', '🐮', '🍎', '🚂', '🐍', '🐘', '🌳'] },
-    { qYes: 'brain.q.swim.yes', qNo: 'brain.q.swim.no',
-      yes: ['🐟', '🐬', '🐳', '🦆', '🐙', '🦈', '🦭', '🐠', '🚤'],
-      no:  ['🐦', '🦅', '🚗', '🪨', '🐮', '🍎', '🦁', '🐘', '🐝', '🌳'] },
-    { qYes: 'brain.q.edible.yes', qNo: 'brain.q.edible.no',
-      yes: ['🍎', '🍌', '🍞', '🍕', '🥕', '🧀', '🍓', '🍇', '🍪', '🍉'],
-      no:  ['🪨', '🚗', '🧦', '⚽', '📚', '🪑', '🌳', '🔨', '🎈', '🧸'] }
-  ];
-
-  // Животные по условному «росту» (для сравнения).
-  var SIZE = [
-    { e: '🐜', s: 1 }, { e: '🐭', s: 2 }, { e: '🐰', s: 3 },
-    { e: '🐱', s: 4 }, { e: '🐶', s: 5 }, { e: '🐷', s: 6 },
-    { e: '🐮', s: 7 }, { e: '🐻', s: 8 }, { e: '🐘', s: 9 }
-  ];
-
-  /* ---------- Генераторы уровней ----------
-     Каждый возвращает { q, scene, options, answer }:
-     q — ключ вопроса, scene — строка-сцена (или null), options — варианты,
-     answer — индекс правильного. */
-
-  function genOdd(rng, tier) {
-    var count = tier <= 0 ? 3 : (tier === 1 ? 4 : (tier === 2 ? 5 : 6));
-    var core, odd;
-    if (tier >= 2 && rng() < 0.6) {
-      var fam = rPick(rng, FAMILIES);
-      core = rSample(rng, fam.core, count - 1);
-      odd = rPick(rng, fam.odd);
-    } else {
-      var mainKey = rPick(rng, THEME_KEYS);
-      var otherKeys = THEME_KEYS.filter(function (k) { return k !== mainKey; });
-      core = rSample(rng, THEMES[mainKey], count - 1);
-      odd = rPick(rng, THEMES[rPick(rng, otherKeys)]);
-    }
-    core = UI.unique(core.filter(function (e) { return e !== odd; }));
+  function genOdd(rng) {
+    var count = rng() < 0.5 ? 3 : 4;
+    var mainKey = rPick(rng, THEME_KEYS);
+    var otherKeys = THEME_KEYS.filter(function (k) { return k !== mainKey; });
+    var core = UI.unique(rSample(rng, THEMES[mainKey], count - 1));
+    var odd = rPick(rng, THEMES[rPick(rng, otherKeys)]);
     while (core.length < count - 1) {
       var extra = rPick(rng, THEMES[rPick(rng, THEME_KEYS)]);
       if (extra !== odd && core.indexOf(extra) < 0) core.push(extra);
@@ -103,8 +61,8 @@
     return { q: 'brain.q.odd', scene: null, options: opts, answer: opts.indexOf(odd) };
   }
 
-  function genColorOdd(rng, tier) {
-    var count = tier <= 0 ? 3 : (tier === 1 ? 4 : 5);
+  function genColorOdd(rng) {
+    var count = 4; // 3 одинаковых + 1 другой — задача читается однозначно
     var base = rPick(rng, CIRCLES);
     var other = rPick(rng, CIRCLES.filter(function (c) { return c !== base; }));
     var opts = [];
@@ -114,152 +72,69 @@
     return { q: 'brain.q.odd', scene: null, options: opts, answer: opts.indexOf(other) };
   }
 
-  function genCount(rng, tier) {
-    var max = tier <= 0 ? 5 : (tier === 1 ? 8 : (tier === 2 ? 10 : 12));
-    var k = rInt(rng, 2, max);
+  function genCount(rng) {
+    var k = rInt(rng, 2, 5);
     var emoji = rPick(rng, THEMES[rPick(rng, THEME_KEYS)]);
     var scene = rep(emoji, k);
     var opts = [k];
     while (opts.length < 4) {
-      var cand = k + rInt(rng, -3, 3);
+      var cand = k + rInt(rng, -2, 2);
       if (cand >= 1 && cand !== k && opts.indexOf(cand) < 0) opts.push(cand);
     }
     opts = rShuffle(rng, opts);
     return { q: 'brain.q.count', scene: scene, options: opts.map(String), answer: opts.indexOf(k) };
   }
 
-  function genPattern(rng, tier) {
-    var len = tier <= 0 ? 2 : (tier === 1 ? 2 : 3);
-    var cycle = rSample(rng, SYMS, len);
-    var totalShown = cycle.length * 2 + 1;
-    var shown = [];
-    for (var i = 0; i < totalShown; i++) shown.push(cycle[i % cycle.length]);
-    var next = cycle[totalShown % cycle.length];
-    var scene = shown.join(' ') + '  ?';
-    var distract = rSample(rng, SYMS.filter(function (s) { return s !== next; }), 3);
-    var opts = rShuffle(rng, [next].concat(distract));
-    return { q: 'brain.q.next', scene: scene, options: opts, answer: opts.indexOf(next) };
-  }
-
-  function genMath(rng, tier) {
-    var max = tier <= 0 ? 5 : (tier === 1 ? 10 : (tier === 2 ? 15 : 20));
-    var add = tier <= 1 || rng() < 0.5;
-    var emoji = rPick(rng, ['🍎', '⭐', '🎈', '🐟', '🍪', '🌸']);
-    var a, b, res, scene;
-    if (add) {
-      a = rInt(rng, 1, Math.max(1, max - 1));
-      b = rInt(rng, 1, Math.max(1, max - a));
-      res = a + b;
-      scene = rep(emoji, a) + '  +  ' + rep(emoji, b);
-    } else {
-      a = rInt(rng, 2, max);
-      b = rInt(rng, 1, a - 1);
-      res = a - b;
-      scene = rep(emoji, a) + '  −  ' + rep(emoji, b);
-    }
-    var opts = [res];
-    while (opts.length < 4) {
-      var cand = res + rInt(rng, -3, 3);
-      if (cand >= 0 && cand !== res && opts.indexOf(cand) < 0) opts.push(cand);
-    }
-    opts = rShuffle(rng, opts);
-    return { q: add ? 'brain.q.sum' : 'brain.q.rest', scene: scene, options: opts.map(String), answer: opts.indexOf(res) };
-  }
-
-  function genNumber(rng, tier) {
-    var max = tier <= 0 ? 10 : (tier === 1 ? 20 : (tier === 2 ? 100 : 1000));
-    var big = rng() < 0.5;
-    var n = tier <= 1 ? 2 : 3;
-    var set = [];
-    while (set.length < n) {
-      var v = rInt(rng, 1, max);
-      if (set.indexOf(v) < 0) set.push(v);
-    }
-    var target = big ? Math.max.apply(null, set) : Math.min.apply(null, set);
-    var opts = rShuffle(rng, set);
-    return { q: big ? 'brain.q.bigNum' : 'brain.q.smallNum', scene: null, options: opts.map(String), answer: opts.indexOf(target) };
-  }
-
-  function genSeq(rng, tier) {
-    var step = tier <= 1 ? rInt(rng, 1, 2) : (tier === 2 ? rInt(rng, 2, 3) : rInt(rng, 2, 5));
-    var start = tier <= 1 ? rInt(rng, 1, 3) : rInt(rng, 1, 6);
-    var terms = [];
-    for (var i = 0; i < 4; i++) terms.push(start + i * step);
-    var answer = start + 4 * step;
-    var scene = terms.join('  ·  ') + '  ·  ?';
-    var opts = [answer];
-    while (opts.length < 4) {
-      var cand = answer + rInt(rng, -step - 1, step + 1);
-      if (cand > 0 && cand !== answer && opts.indexOf(cand) < 0) opts.push(cand);
-    }
-    opts = rShuffle(rng, opts);
-    return { q: 'brain.q.seq', scene: scene, options: opts.map(String), answer: opts.indexOf(answer) };
-  }
-
-  function genCategory(rng, tier) {
-    var cat = rPick(rng, CATS);
-    var need = tier <= 1 ? 3 : 4;
-    var positive = rng() < 0.5;
-    var target, opts, q;
-    if (positive) {
-      target = rPick(rng, cat.yes);
-      opts = [target].concat(rSample(rng, cat.no, need - 1));
-      q = cat.qYes;
-    } else {
-      target = rPick(rng, cat.no);
-      opts = [target].concat(rSample(rng, cat.yes, need - 1));
-      q = cat.qNo;
-    }
-    opts = rShuffle(rng, opts);
-    return { q: q, scene: null, options: opts, answer: opts.indexOf(target) };
-  }
-
-  function genSize(rng, tier) {
-    var n = tier <= 0 ? 2 : 3;
-    var big = rng() < 0.5;
-    var base = rPick(rng, SIZE);
-    var pool = SIZE.filter(function (x) { return Math.abs(x.s - base.s) >= 2; });
-    if (pool.length < n - 1) pool = SIZE.filter(function (x) { return x !== base; });
-    var set = [base].concat(rSample(rng, pool, n - 1));
-    var target = set[0];
-    for (var i = 1; i < set.length; i++) {
-      if (big ? set[i].s > target.s : set[i].s < target.s) target = set[i];
-    }
-    var opts = rShuffle(rng, set.map(function (x) { return x.e; }));
-    return { q: big ? 'brain.q.bigSize' : 'brain.q.smallSize', scene: null, options: opts, answer: opts.indexOf(target.e) };
-  }
+  /* ---------- Хитрые загадки (главный фокус) ----------
+     q — ключ вопроса (RU/EN в i18n), answer — правильный ответ-эмодзи,
+     wrong — правдоподобные, но неверные варианты. */
+  var RIDDLES = [
+    { q: 'brain.r.1',  answer: '🪜', wrong: ['🛗', '🚠', '⛷️'] },          // идёт вверх-вниз, но не двигается
+    { q: 'brain.r.2',  answer: '🎹', wrong: ['🔑', '🚪', '🪟'] },          // клавиши, но не открывает замок
+    { q: 'brain.r.3',  answer: '⚖️', wrong: ['🍎', '🪶', '🍉'] },          // кг фруктов или кг перьев
+    { q: 'brain.r.4',  answer: '❤️', wrong: ['🥚', '🪟', '🍶'] },          // разбить, не дотрагиваясь
+    { q: 'brain.r.5',  answer: '🌊', wrong: ['🏃', '🐎', '🚗'] },          // бежит без ног
+    { q: 'brain.r.6',  answer: '12️⃣', wrong: ['1️⃣', '2️⃣', '28️⃣'] },      // месяцы с 28 днями
+    { q: 'brain.r.7',  answer: '1️⃣', wrong: ['7️⃣', '8️⃣', '0️⃣'] },        // семь братьев — одна сестра
+    { q: 'brain.r.8',  answer: '🤧', wrong: ['⚽', '🎾', '🥏'] },          // поймать, но не бросить
+    { q: 'brain.r.9',  answer: '🕳️', wrong: ['📦', '🎁', '🗃️'] },          // чем больше берёшь, тем больше
+    { q: 'brain.r.10', answer: '🌽', wrong: ['🐰', '🎧', '🐘'] },          // уши, но не слышит
+    { q: 'brain.r.11', answer: '🪡', wrong: ['👁️', '🧷', '🪢'] },          // глаз, но не видит
+    { q: 'brain.r.12', answer: '🎵', wrong: ['📻', '🎧', '🔊'] },          // услышать, но не увидеть
+    { q: 'brain.r.13', answer: '🥄', wrong: ['✋', '🫖', '🍵'] },          // чем мешать чай
+    { q: 'brain.r.14', answer: '🧍', wrong: ['🦖', '🐢', '🦔'] },          // 4 ноги, 2, 3 — человек
+    { q: 'brain.r.15', answer: '🧻', wrong: ['🧽', '☂️', '🚿'] },          // мокнет, пока вытирает
+    { q: 'brain.r.16', answer: '🥛', wrong: ['🌊', '🚿', '🏺'] },          // где вода стоит столбом
+    { q: 'brain.r.17', answer: '🕰️', wrong: ['🖼️', '🔔', '📆'] },          // висит и тикает
+    { q: 'brain.r.18', answer: '🦇', wrong: ['🐻', '🦉', '🐱'] },          // спит вниз головой
+    { q: 'brain.r.19', answer: '🍾', wrong: ['🧸', '📷', '🧦'] },          // шея без головы
+    { q: 'brain.r.20', answer: '🌧️', wrong: ['🥚', '📱', '🍷'] },          // падает, но не разбивается
+    { q: 'brain.r.21', answer: '🎈', wrong: ['✈️', '🦅', '🐛'] },          // летает без крыльев
+    { q: 'brain.r.22', answer: '🪑', wrong: ['🐴', '🧍', '🛴'] },          // четыре ноги, не ходит
+    { q: 'brain.r.23', answer: '6️⃣', wrong: ['3️⃣', '5️⃣', '4️⃣'] },        // концы трёх палок
+    { q: 'brain.r.24', answer: '💤', wrong: ['🌙', '🕶️', '🎭'] }           // увидеть с закрытыми глазами
+  ];
 
   /* ---------- Выбор уровня ---------- */
 
-  function tierFor(level, age) {
-    var tier = level <= 10 ? 0 : (level <= 22 ? 1 : (level <= 32 ? 2 : 3));
-    var cap = age === 'preschool' ? 1 : (age === 'junior' ? 2 : 3);
-    return Math.min(tier, cap);
+  function makeLevel(level) {
+    if (level <= WARMUP) {
+      var rng = mulberry32((level * 2654435761) >>> 0);
+      var gens = [genOdd, genColorOdd, genCount];
+      return gens[Math.floor(rng() * gens.length)](rng);
+    }
+    var r = RIDDLES[level - 1 - WARMUP];
+    var rr = mulberry32((level * 2654435761) >>> 0);
+    var opts = rShuffle(rr, [r.answer].concat(r.wrong));
+    return { q: r.q, scene: null, options: opts, answer: opts.indexOf(r.answer) };
   }
 
-  function levelNameFor(tier) {
-    return tier <= 0 ? 'easy' : (tier === 1 ? 'medium' : 'hard');
-  }
-
-  function poolFor(tier) {
-    if (tier <= 0) return [genOdd, genColorOdd, genCount, genPattern, genMath];
-    if (tier === 1) return [genOdd, genColorOdd, genCount, genPattern, genMath, genNumber, genSize];
-    if (tier === 2) return [genOdd, genPattern, genMath, genNumber, genSeq, genCategory, genSize];
-    return [genOdd, genPattern, genMath, genNumber, genSeq, genCategory];
-  }
-
-  function makeLevel(level, age) {
-    var tier = tierFor(level, age);
-    var rng = mulberry32(((level * 2654435761) ^ (tier * 40503)) >>> 0);
-    var pool = poolFor(tier);
-    var gen = pool[Math.floor(rng() * pool.length)];
-    return gen(rng, tier);
-  }
+  function tierFor(level) { return level <= WARMUP ? 0 : 1; }
+  function levelNameFor(tier) { return tier <= 0 ? 'easy' : 'medium'; }
 
   /* ---------- Запуск ---------- */
 
   function start(root, App) {
-    var age = App.age();
     var level = Math.min(Math.max(1, Store.brainLevel()), TOTAL);
     var mistakes = 0;
     var locked = false;
@@ -279,7 +154,7 @@
     function render() {
       locked = false;
       mistakes = 0;
-      var data = makeLevel(level, age);
+      var data = makeLevel(level);
       UI.clear(stage);
 
       progressEl.textContent = t('brain.progress', { n: level, total: TOTAL });
@@ -304,7 +179,7 @@
         btn.classList.add('correct');
         Sound.play('win');
         var stars = mistakes === 0 ? 3 : (mistakes === 1 ? 2 : 1);
-        Store.recordResult('brain', stars, levelNameFor(tierFor(level, age)));
+        Store.recordResult('brain', stars, levelNameFor(tierFor(level)));
         saveProgress();
         var newly = Achievements.checkNew();
         if (newly.length) App.showAchievements(newly, nextLevel);
