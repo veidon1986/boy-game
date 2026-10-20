@@ -2,15 +2,62 @@
 (function (global) {
   'use strict';
 
-  function boot() {
-    App.init();
+  // Обновлять при выпуске набора новых игр.
+  var RELEASE_NOTICE_VERSION = '2026-10-18-1';
 
-    if ('serviceWorker' in navigator &&
-        (location.protocol === 'http:' || location.protocol === 'https:')) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('sw.js').catch(function () { /* офлайн-режим недоступен */ });
+  function notifyReleaseIfNeeded() {
+    if (!('Notification' in window) || Notification.permission !== 'granted' ||
+        Store.get('notificationsEnabled', false) !== true) return;
+    if (Store.get('releaseNoticeVersion', '') === RELEASE_NOTICE_VERSION) return;
+    Store.set('releaseNoticeVersion', RELEASE_NOTICE_VERSION);
+    try {
+      new Notification(I18N.getLang() === 'ru' ? 'Новые игры!' : 'New games!', {
+        body: I18N.getLang() === 'ru' ? 'Загляни в приложение — появились новые игры.' : 'Open the app to discover new games.',
+        icon: 'icons/icon-192.png'
       });
-    }
+    } catch (e) { /* уведомления могут быть недоступны в этом режиме браузера */ }
+  }
+
+  function setupServiceWorker() {
+    if (!('serviceWorker' in navigator) ||
+        (location.protocol !== 'http:' && location.protocol !== 'https:')) return;
+
+    navigator.serviceWorker.register('sw.js').then(function (registration) {
+      var prompted = false;
+      function offerUpdate() {
+        if (prompted || !registration.waiting) return;
+        prompted = true;
+        App.updateAvailable = true;
+        if (App.mode === 'home' && App.els.overlay.classList.contains('hidden')) App.showUpdatePrompt();
+        else App._updatePromptDeferred = true;
+      }
+      if (registration.waiting && navigator.serviceWorker.controller) offerUpdate();
+      registration.addEventListener('updatefound', function () {
+        var worker = registration.installing;
+        if (!worker) return;
+        worker.addEventListener('statechange', function () {
+          if (worker.state === 'installed' && navigator.serviceWorker.controller) offerUpdate();
+        });
+      });
+      registration.update().catch(function () {});
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') registration.update().catch(function () {});
+      });
+    }).catch(function () { /* офлайн-режим недоступен */ });
+
+    var reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (reloading) return;
+      reloading = true;
+      location.reload();
+    });
+  }
+
+  function boot() {
+    App.releaseNoticeVersion = RELEASE_NOTICE_VERSION;
+    App.init();
+    notifyReleaseIfNeeded();
+    setupServiceWorker();
   }
 
   if (document.readyState === 'loading') {

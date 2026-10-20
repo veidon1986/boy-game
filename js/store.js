@@ -32,6 +32,14 @@
     try { global.localStorage.removeItem(PREFIX + key); } catch (e) {}
   }
 
+  // Записать строку и убедиться, что она сохранилась.
+  function writeRaw(key, value) {
+    try {
+      global.localStorage.setItem(PREFIX + key, value);
+      return global.localStorage.getItem(PREFIX + key) === value;
+    } catch (e) { return false; }
+  }
+
   /* ---------- Профили (дети) ---------- */
 
   var _reg = null;   // кэш реестра профилей
@@ -58,14 +66,19 @@
         createdAt: legacy.createdAt || Date.now()
       });
       r.activeId = id;
+      var copied = true;
       ['stats', 'achievements', 'best', 'usage', 'limitMinutes'].forEach(function (k) {
         var v = raw(k);
-        if (v !== null) { try { global.localStorage.setItem(PREFIX + 'd.' + id + '.' + k, v); } catch (e) {} }
+        if (v !== null && !writeRaw(dataKey(id, k), v)) copied = false;
       });
-      ['profile', 'stats', 'achievements', 'best', 'usage', 'limitMinutes'].forEach(remove);
+      // Старые данные удаляются только после подтверждённой записи профиля и копий.
+      if (copied && writeRaw('profiles', JSON.stringify(r))) {
+        ['profile', 'stats', 'achievements', 'best', 'usage', 'limitMinutes'].forEach(remove);
+      }
+    } else {
+      set('profiles', r);
     }
     _reg = r;
-    set('profiles', r);
   }
 
   function ensure() {
@@ -303,7 +316,7 @@
   }
   function setLimitFor(id, m) { return set(dataKey(id, 'limitMinutes'), m); }
   function totalStarsFor(id) {
-    var all = statsFor(id);
+    var all = allStatsFor(id);
     var sum = 0;
     for (var k in all) {
       if (Object.prototype.hasOwnProperty.call(all, k)) sum += (all[k].stars || 0);

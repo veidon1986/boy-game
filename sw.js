@@ -1,5 +1,5 @@
 /* sw.js — офлайн-кэш приложения (service worker). */
-const CACHE = 'boygame-v22';
+const CACHE = 'boygame-v42';
 const ASSETS = [
   './',
   './index.html',
@@ -8,6 +8,8 @@ const ASSETS = [
   './js/i18n.js',
   './js/ages.js',
   './js/store.js',
+  './js/analytics-config.js',
+  './js/analytics.js',
   './js/audio.js',
   './js/ui.js',
   './js/adaptive.js',
@@ -20,6 +22,13 @@ const ASSETS = [
   './js/games/math.js',
   './js/games/odd.js',
   './js/games/find.js',
+  './js/games/puzzle.js',
+  './js/games/shadow.js',
+  './js/games/story.js',
+  './js/games/maze.js',
+  './js/games/symmetry.js',
+  './js/games/robot.js',
+  './js/games/wordbuild.js',
   './js/games/brain.js',
   './js/games/words.js',
   './js/games/runner.js',
@@ -32,8 +41,12 @@ const ASSETS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches.open(CACHE).then((cache) => cache.addAll(ASSETS))
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -51,22 +64,25 @@ self.addEventListener('fetch', (event) => {
   // Навигация: сначала сеть, при офлайне — из кэша index.html.
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req).catch(() => caches.match('./index.html'))
+      fetch(new Request(req, { cache: 'reload' })).catch(() => caches.match('./index.html'))
     );
     return;
   }
 
-  // Остальное: сначала кэш, затем сеть (и кладём в кэш).
+  // При сети обновляем файлы сразу, чтобы не задерживать новые версии приложения.
+  // Если сети нет, продолжаем отдавать сохранённый офлайн-кэш.
   event.respondWith(
-    caches.match(req).then((cached) => {
-      if (cached) return cached;
-      return fetch(req).then((res) => {
-        if (res && res.status === 200 && res.type === 'basic') {
-          const copy = res.clone();
-          caches.open(CACHE).then((cache) => cache.put(req, copy));
-        }
-        return res;
-      }).catch(() => cached);
+    fetch(new Request(req, { cache: 'reload' })).then((res) => {
+      if (res && res.status === 200 && res.type === 'basic') {
+        return caches.open(CACHE).then((cache) =>
+          cache.put(req, res.clone()).then(() => res)
+        );
+      }
+      return res;
+    }).catch(() => {
+      return caches.match(req).then((cached) => {
+        return cached;
+      });
     })
   );
 });

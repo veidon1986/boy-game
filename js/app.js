@@ -10,7 +10,7 @@
 
   var App = {
     games: games,
-    mode: 'home',      // 'home' | 'game' | 'achievements'
+    mode: 'home',      // 'home' | 'game' | 'achievements' | 'admin'
     current: null,     // id активной игры
     cleanup: null,     // функция очистки активной игры
     els: {}
@@ -53,12 +53,18 @@
       App.els.title.textContent = t(gameById(App.current).titleKey);
     } else if (App.mode === 'achievements') {
       App.els.title.textContent = t('ach.screen.title');
+    } else if (App.mode === 'admin') {
+      App.els.title.textContent = t('analytics.adminTitle');
     } else {
       App.els.title.textContent = t('app.title');
     }
     App.els.homeBtn.classList.toggle('hidden', App.mode === 'home');
+    App.els.musicBtn.textContent = Sound.isMusicEnabled() ? '🎵' : '🎼';
+    App.els.musicBtn.setAttribute('aria-pressed', Sound.isMusicEnabled() ? 'true' : 'false');
+    App.els.musicBtn.setAttribute('aria-label', t(Sound.isMusicEnabled() ? 'music.on' : 'music.off'));
     App.els.soundBtn.textContent = Sound.isEnabled() ? '🔊' : '🔇';
     App.els.langBtn.textContent = I18N.getLang().toUpperCase();
+    Sound.setMusicContext(App.mode === 'home' ? 'menu' : App.mode === 'game' ? App.current : 'pause');
   }
 
   function stopCurrent() {
@@ -160,7 +166,7 @@
           Sound.play('win');
           App.hideOverlay();
           App.renderHome();
-          App.maybeShowInstallHint(700);
+          if (!App.requestInitialPermissions()) App.maybeShowInstallHint(700);
         }
       }, '🚀 ' + t('welcome.start'))
     ]);
@@ -327,6 +333,7 @@
         el('button', {
           type: 'button', class: 'btn primary',
           onclick: function () {
+            if (Analytics.configured()) Analytics.deletePlayer(p).catch(function () {});
             Store.removeProfile(p.id);
             Sound.play('wrong');
             App.toast(t('profiles.removed'), 1500);
@@ -459,6 +466,9 @@
     }, '🔒 ' + t('limit.parents')));
 
     screen.appendChild(wrap);
+    if (App.updateAvailable && App._updatePromptDeferred) setTimeout(function () {
+      if (App.els.overlay.classList.contains('hidden')) App.showUpdatePrompt();
+    }, 0);
   };
 
   /* ---------- Лимит времени: справка и окна ---------- */
@@ -531,7 +541,10 @@
         Sound.play('win');
         App.hideOverlay();
         if (onSuccess) onSuccess();
-        else App.showParentSettings();
+        else if (Store.get('permissionsPromptShown', false) &&
+                 !Store.get('permissionsPromptResolved', false)) {
+          App.showPermissionsConsent({ fromParent: true });
+        } else App.showParentSettings();
       } else {
         err.classList.remove('hidden');
         input.value = '';
@@ -560,6 +573,18 @@
     App.showOverlay(body);
     input.addEventListener('keydown', function (e) { if (e.key === 'Enter') submit(); });
     input.focus();
+  };
+
+  App.requestInitialPermissions = function () {
+    if (Store.get('permissionsPromptShown', false)) return false;
+    Store.set('permissionsPromptShown', true);
+    App.showParentsGate(function () {
+      App.showPermissionsConsent({ firstRun: true });
+    }, function () {
+      if (!Store.profile()) App.showOnboarding();
+      else App.renderHome();
+    });
+    return true;
   };
 
   App.showParentSettings = function () {
@@ -629,6 +654,21 @@
       head.push(childRow);
     }
     head.push(usedLine);
+    head.push(el('label', { class: 'field-label' }, t('permissions.title')));
+    head.push(el('p', { class: 'result-note' }, t('permissions.intro')));
+    head.push(el('button', { type: 'button', class: 'btn', onclick: function () {
+      Sound.play('tap');
+      App.showPermissionsConsent();
+    } }, t('permissions.open')));
+    if (Analytics.hasPendingDeletion()) {
+      head.push(el('p', { class: 'result-note' }, t('analytics.deletePending')));
+      head.push(el('button', { type: 'button', class: 'btn', onclick: function () {
+        Analytics.retryDeletion().then(function () {
+          App.toast(t('analytics.deleted'), 2200);
+          App.showParentSettings();
+        }).catch(function () { App.toast(t('analytics.deleteFailed'), 2800); });
+      } }, t('analytics.retryDelete')));
+    }
     head.push(el('label', { class: 'field-label' }, t('limit.limitLabel')));
     head.push(grid);
 
@@ -659,6 +699,7 @@
     if (!App.canPlay()) { App.showBlocked(); return; }
     var game = gameById(id);
     if (!game) return;
+    Analytics.recordLaunch(id);
     stopCurrent();
 
     App.mode = 'game';
@@ -674,6 +715,191 @@
   App.goHome = function () {
     Sound.play('tap');
     App.renderHome();
+  };
+
+  App.showUpdatePrompt = function () {
+    if (!App.updateAvailable || App.mode !== 'home' || !App.els.overlay.classList.contains('hidden')) return;
+    App._updatePromptDeferred = false;
+    var body = el('div', { class: 'onboarding' }, [
+      el('div', { class: 'onboarding-emoji' }, '✨'),
+      el('div', { class: 'onboarding-title' }, t('update.title')),
+      el('p', { class: 'result-text' }, t('update.body')),
+      el('p', { class: 'result-note' }, t('update.cacheNote')),
+      el('div', { class: 'result-actions' }, [
+        el('button', { type: 'button', class: 'btn', onclick: function () { Sound.play('tap'); App.hideOverlay(); } }, t('update.later')),
+        el('button', { type: 'button', class: 'btn primary', onclick: function () {
+          Sound.play('tap');
+          App.hideOverlay();
+          navigator.serviceWorker.getRegistration().then(function (registration) {
+            if (registration && registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+          });
+        } }, t('update.now'))
+      ])
+    ]);
+    App.showOverlay(body);
+  };
+
+  App.showAnalyticsConsent = function () {
+    var children = [
+      el('div', { class: 'onboarding-emoji' }, '📊'),
+      el('div', { class: 'onboarding-title' }, t('analytics.consentTitle')),
+      el('p', { class: 'result-text' }, t('analytics.consentDetails')),
+      el('p', { class: 'result-note' }, t('analytics.consentOptional'))
+    ];
+    if (Analytics.privacyUrl) {
+      children.push(el('a', { class: 'analytics-privacy-link', href: Analytics.privacyUrl, target: '_blank', rel: 'noopener noreferrer' }, t('analytics.privacyLink')));
+    }
+    children.push(el('div', { class: 'result-actions' }, [
+      el('button', { type: 'button', class: 'btn', onclick: function () { App.hideOverlay(); } }, t('analytics.notNow')),
+      el('button', { type: 'button', class: 'btn primary', onclick: function () {
+        Store.set('analyticsEnabled', true);
+        Store.set('analyticsConsentVersion', 'analytics-v1');
+        Store.set('analyticsConsentAt', new Date().toISOString());
+        Store.set('analyticsDeletePending', false);
+        App.hideOverlay();
+        App.toast(t('analytics.enabled'), 2200);
+        App.showParentSettings();
+      } }, t('analytics.accept'))
+    ]));
+    App.showOverlay(el('div', { class: 'onboarding' }, children));
+  };
+
+  App.showAnalyticsRevoke = function () {
+    var body = el('div', { class: 'onboarding' }, [
+      el('div', { class: 'onboarding-title' }, t('analytics.revokeTitle')),
+      el('p', { class: 'result-text' }, t('analytics.revokeDetails')),
+      el('div', { class: 'result-actions' }, [
+        el('button', { type: 'button', class: 'btn', onclick: function () { App.hideOverlay(); } }, t('analytics.cancel')),
+        el('button', { type: 'button', class: 'btn primary', onclick: function () {
+          Analytics.revoke().then(function () {
+            App.hideOverlay();
+            App.toast(t('analytics.deleted'), 2200);
+            App.showParentSettings();
+          }).catch(function () {
+            App.hideOverlay();
+            App.toast(t('analytics.deleteFailed'), 3000);
+            App.showParentSettings();
+          });
+        } }, t('analytics.revokeButton'))
+      ])
+    ]);
+    App.showOverlay(body);
+  };
+
+  App.showPermissionsConsent = function (flow) {
+    flow = flow || {};
+    var analyticsAvailable = Analytics.configured();
+    var notificationsAvailable = 'Notification' in window;
+    var analyticsBox = el('input', { type: 'checkbox', disabled: !analyticsAvailable });
+    var notificationsBox = el('input', {
+      type: 'checkbox',
+      disabled: !notificationsAvailable || (notificationsAvailable && Notification.permission === 'denied')
+    });
+    analyticsBox.checked = Analytics.consented();
+    notificationsBox.checked = Store.get('notificationsEnabled', false) === true &&
+      (!notificationsAvailable || Notification.permission !== 'denied');
+
+    var content = [
+      el('div', { class: 'onboarding-emoji' }, '🔐'),
+      el('div', { class: 'onboarding-title' }, t('permissions.title')),
+      el('p', { class: 'result-text' }, t('permissions.intro')),
+      el('label', { class: 'permission-option' }, [
+        analyticsBox,
+        el('span', { class: 'permission-option-text' }, [
+          el('strong', {}, t('analytics.title')),
+          el('span', {}, t('analytics.consentDetails'))
+        ])
+      ])
+    ];
+
+    if (Analytics.configured() && Analytics.privacyUrl) {
+      content.push(el('a', {
+        class: 'analytics-privacy-link',
+        href: Analytics.privacyUrl,
+        target: '_blank',
+        rel: 'noopener noreferrer'
+      }, t('analytics.privacyLink')));
+    } else if (!analyticsAvailable) {
+      content.push(el('p', { class: 'result-note' }, t('permissions.analyticsUnavailable')));
+    }
+
+    content.push(el('label', { class: 'permission-option' }, [
+      notificationsBox,
+      el('span', { class: 'permission-option-text' }, [
+        el('strong', {}, t('notifications.title')),
+        el('span', {}, t('notifications.description'))
+      ])
+    ]));
+    if (!notificationsAvailable) {
+      content.push(el('p', { class: 'result-note' }, t('notifications.unsupported')));
+    } else if (Notification.permission === 'denied') {
+      content.push(el('p', { class: 'result-note' }, t('notifications.blocked')));
+    }
+
+    content.push(el('div', { class: 'result-actions' }, [
+      el('button', {
+        type: 'button', class: 'btn',
+        onclick: function () {
+          App.hideOverlay();
+          if (flow.firstRun && !Store.profile()) App.showOnboarding();
+          else if (flow.firstRun) App.renderHome();
+          else App.showParentSettings();
+        }
+      }, t('analytics.notNow')),
+      el('button', {
+        type: 'button', class: 'btn primary',
+        onclick: function () {
+          Sound.play('tap');
+
+          // Browser permission must be requested directly from this click.
+          var notificationRequest = null;
+          if (notificationsAvailable && notificationsBox.checked && Notification.permission === 'default') {
+            try { notificationRequest = Notification.requestPermission(); }
+            catch (e) { notificationRequest = Promise.resolve('denied'); }
+          }
+
+          var wasConsented = Analytics.consented();
+          var deletion = Promise.resolve();
+          if (analyticsAvailable && analyticsBox.checked && !wasConsented) {
+            Store.set('analyticsEnabled', true);
+            Store.set('analyticsConsentVersion', 'analytics-v1');
+            Store.set('analyticsConsentAt', new Date().toISOString());
+            Store.set('analyticsDeletePending', false);
+          } else if (analyticsAvailable && !analyticsBox.checked && wasConsented) {
+            deletion = Analytics.revoke();
+          }
+
+          Store.set('permissionsPromptResolved', true);
+
+          if (!notificationsAvailable || !notificationsBox.checked) {
+            Store.set('notificationsEnabled', false);
+          } else if (Notification.permission === 'granted') {
+            Store.set('notificationsEnabled', true);
+            Store.set('releaseNoticeVersion', App.releaseNoticeVersion);
+          }
+
+          Promise.resolve(notificationRequest).catch(function () { return 'denied'; }).then(function (permission) {
+            if (notificationRequest) {
+              var granted = permission === 'granted';
+              Store.set('notificationsEnabled', granted);
+              if (granted) Store.set('releaseNoticeVersion', App.releaseNoticeVersion);
+            }
+            return deletion;
+          }).then(function () {
+            App.hideOverlay();
+            App.toast(t('permissions.saved'), 2200);
+            if (!Store.profile()) App.showOnboarding();
+            else App.showParentSettings();
+          }).catch(function () {
+            App.hideOverlay();
+            App.toast(t('analytics.deleteFailed'), 2800);
+            App.showParentSettings();
+          });
+        }
+      }, t('permissions.save'))
+    ]));
+
+    App.showOverlay(el('div', { class: 'onboarding permissions-modal' }, content));
   };
 
   
@@ -732,13 +958,63 @@
   App.openAdmin = function () {
     if (!isAdmin()) { App.showAdminAuth(); return; }
     if (App.cleanup) { try { App.cleanup(); } catch (e) {} App.cleanup = null; }
-    App.mode = 'achievements';
+    App.mode = 'admin';
     App.current = null;
     if (typeof refreshTopbar === 'function') refreshTopbar();
     var screen = App.els.screen;
     UI.clear(screen);
     screen.scrollTop = 0;
     var wrap = UI.el('div', { class: 'ach-screen' });
+    wrap.appendChild(el('div', { class: 'onboarding-title' }, t('analytics.adminTitle')));
+    if (!Analytics.configured()) {
+      wrap.appendChild(el('p', { class: 'result-text' }, t('analytics.adminNotConfigured')));
+      screen.appendChild(wrap);
+      return;
+    }
+
+    var tokenInput = el('input', { class: 'name-input', type: 'password', autocomplete: 'current-password', placeholder: t('analytics.adminToken') });
+    var status = el('p', { class: 'result-note' }, t('analytics.adminHint'));
+    var stats = el('div', { class: 'analytics-results' });
+
+    function loadStats() {
+      status.textContent = t('analytics.loading');
+      Analytics.getStats(tokenInput.value).then(function (data) {
+        UI.clear(stats);
+        status.textContent = t('analytics.statsUpdated', { day: data.day, tz: data.timezone });
+        var cards = el('div', { class: 'analytics-metric-grid' }, [
+          el('div', { class: 'analytics-metric' }, [el('span', { class: 'analytics-metric-value' }, data.newPlayersToday), el('span', { class: 'analytics-metric-label' }, t('analytics.newToday'))]),
+          el('div', { class: 'analytics-metric' }, [el('span', { class: 'analytics-metric-value' }, data.activePlayersToday), el('span', { class: 'analytics-metric-label' }, t('analytics.activeToday'))]),
+          el('div', { class: 'analytics-metric' }, [el('span', { class: 'analytics-metric-value' }, data.totalPlayers), el('span', { class: 'analytics-metric-label' }, t('analytics.totalPlayers'))])
+        ]);
+        stats.appendChild(cards);
+        stats.appendChild(el('div', { class: 'analytics-section-title' }, t('analytics.popularGames', { days: data.gameLaunchesDays })));
+        if (!data.popularGames.length) {
+          stats.appendChild(el('p', { class: 'result-note' }, t('analytics.noGames')));
+        } else {
+          var table = el('div', { class: 'analytics-game-list' });
+          data.popularGames.forEach(function (item, index) {
+            var game = App.gameById(item.gameId);
+            var label = game ? t(game.titleKey) : item.gameId;
+            table.appendChild(el('div', { class: 'analytics-game-row' }, [
+              el('span', { class: 'analytics-game-rank' }, index + 1),
+              el('span', { class: 'analytics-game-name' }, label),
+              el('span', { class: 'analytics-game-count' }, item.launches)
+            ]));
+          });
+          stats.appendChild(table);
+        }
+      }).catch(function (error) {
+        status.textContent = t(error.message === 'unauthorized' ? 'analytics.adminUnauthorized' : 'analytics.adminUnavailable');
+        UI.clear(stats);
+      });
+    }
+
+    wrap.appendChild(el('p', { class: 'result-note' }, t('analytics.adminPrivacy')));
+    wrap.appendChild(el('label', { class: 'field-label' }, t('analytics.adminToken')));
+    wrap.appendChild(tokenInput);
+    wrap.appendChild(el('button', { type: 'button', class: 'btn primary analytics-load-button', onclick: loadStats }, t('analytics.loadStats')));
+    wrap.appendChild(status);
+    wrap.appendChild(stats);
     screen.appendChild(wrap);
   };
 
@@ -853,7 +1129,10 @@
     ov.classList.remove('hidden');
   };
 
-  App.hideOverlay = function () { App.els.overlay.classList.add('hidden'); };
+  App.hideOverlay = function () {
+    App.els.overlay.classList.add('hidden');
+    if (App._updatePromptDeferred && App.mode === 'home') setTimeout(App.showUpdatePrompt, 0);
+  };
 
   function isStandalone() {
     try {
@@ -929,6 +1208,7 @@
   App.init = function () {
     App.els.title = document.getElementById('title');
     App.els.homeBtn = document.getElementById('homeBtn');
+    App.els.musicBtn = document.getElementById('musicBtn');
     App.els.soundBtn = document.getElementById('soundBtn');
     App.els.langBtn = document.getElementById('langBtn');
     App.els.screen = document.getElementById('screen');
@@ -939,6 +1219,13 @@
 
     App.els.homeBtn.addEventListener('click', function () { App.goHome(); });
 
+    App.els.musicBtn.addEventListener('click', function () {
+      var on = Sound.setMusicEnabled(!Sound.isMusicEnabled());
+      refreshTopbar();
+      Sound.play('tap');
+      App.toast(t(on ? 'music.on' : 'music.off'), 1200);
+    });
+
     App.els.langBtn.addEventListener('click', function () {
       var next = I18N.getLang() === 'ru' ? 'en' : 'ru';
       I18N.setLang(next);
@@ -946,6 +1233,7 @@
       Sound.play('tap');
       if (App.mode === 'game') App.startGame(App.current);
       else if (App.mode === 'achievements') App.openAchievements();
+      else if (App.mode === 'admin') App.openAdmin();
       else App.renderHome();
       refreshTopbar();
     });
@@ -962,8 +1250,10 @@
     var unlock = function () {
       Sound.unlock();
       document.removeEventListener('pointerdown', unlock);
+      document.removeEventListener('keydown', unlock);
     };
     document.addEventListener('pointerdown', unlock);
+    document.addEventListener('keydown', unlock);
 
     // Админка по URL-хешу: #admin
     function checkAdminHash() {
@@ -980,7 +1270,6 @@
         }
       }
     }
-    checkAdminHash();
     window.addEventListener('hashchange', checkAdminHash);
 
     // Дневной лимит: считаем только время активной игры (без окон).
@@ -1023,8 +1312,15 @@
     }, 1000);
 
     App.renderHome();
-    if (!Store.profile()) App.showOnboarding();
-    else App.maybeShowInstallHint(700);
+    if (location.hash === '#admin') {
+      // Применяем маршрут после главного экрана, иначе renderHome
+      // перезаписывает открытую админку при уже активной сессии.
+      checkAdminHash();
+    } else if (!Store.profile()) {
+      App.showOnboarding();
+    } else if (!App.requestInitialPermissions()) {
+      App.maybeShowInstallHint(700);
+    }
   };
 
   global.App = App;

@@ -5,3 +5,6 @@ Thumbs.db
 
 # Локальный сервер / кэши
 .cache/
+__pycache__/
+analytics.sqlite3
+analytics/*.sqlite3
