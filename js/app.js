@@ -802,15 +802,20 @@
     var content = [
       el('div', { class: 'onboarding-emoji' }, '🔐'),
       el('div', { class: 'onboarding-title' }, t('permissions.title')),
-      el('p', { class: 'result-text' }, t('permissions.intro')),
-      el('label', { class: 'permission-option' }, [
+      el('p', { class: 'result-text' }, t('permissions.intro'))
+    ];
+
+    if (analyticsAvailable) {
+      content.push(el('label', { class: 'permission-option' }, [
         analyticsBox,
         el('span', { class: 'permission-option-text' }, [
           el('strong', {}, t('analytics.title')),
           el('span', {}, t('analytics.consentDetails'))
         ])
-      ])
-    ];
+      ]));
+    } else {
+      content.push(el('p', { class: 'result-note' }, t('permissions.analyticsUnavailable')));
+    }
 
     if (Analytics.configured() && Analytics.privacyUrl) {
       content.push(el('a', {
@@ -819,8 +824,6 @@
         target: '_blank',
         rel: 'noopener noreferrer'
       }, t('analytics.privacyLink')));
-    } else if (!analyticsAvailable) {
-      content.push(el('p', { class: 'result-note' }, t('permissions.analyticsUnavailable')));
     }
 
     content.push(el('label', { class: 'permission-option' }, [
