@@ -1154,16 +1154,46 @@ button { font-family: inherit; cursor: pointer; }
 .blocks-rotate:hover { filter: brightness(1.08); }
 .blocks-rotate:active { transform: translateY(4px) scale(.96); box-shadow: 0 2px 0 #4930ad, inset 0 2px 5px rgba(255,255,255,.3); }
 .blocks-pause { min-width: 48px; width: 48px; height: 48px; padding: 0; border-radius: 16px; font-size: 20px; box-shadow: 0 4px 0 rgba(57, 42, 108, .16); }
-@media (max-width: 400px) {
-  .blocks-stage { grid-template-columns: minmax(0, 1fr); grid-template-areas: "next" "board"; }
-  .blocks-next { display: flex; justify-content: center; align-items: center; gap: 12px; padding: 7px 10px; }
-  .blocks-next-board { grid-template-columns: repeat(4, 14px); gap: 1px; }
-  .blocks-preview-cell { width: 14px; height: 14px; }
-  .blocks-controls { gap: clamp(12px, 4vw, 20px); }
-  .blocks-pad { grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px); gap: 3px; }
-  .blocks-pad-empty { width: 50px; height: 50px; }
-  .blocks-control { width: 50px; height: 50px; }
-  .blocks-rotate { width: 84px; height: 84px; }
+@media (max-width: 600px) {
+  .screen.blocks-screen {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 4px 8px calc(6px + env(safe-area-inset-bottom));
+  }
+  .blocks-screen > .game-hint { flex: 0 0 auto; margin: 0 auto 4px; font-size: 13px; line-height: 1.2; }
+  .blocks-screen .blocks-topbar { flex: 0 0 auto; margin-bottom: 4px; }
+  .blocks-screen .blocks-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr) 66px;
+    grid-template-areas: "board next";
+    align-items: center;
+    gap: 6px;
+  }
+  .blocks-screen .blocks-board {
+    width: min(60vw, 380px, calc(62.5dvh - 210px));
+    max-width: 100%;
+    aspect-ratio: 10 / 16;
+    grid-template-rows: repeat(16, minmax(0, 1fr));
+    gap: 1px;
+    padding: 4px;
+  }
+  .blocks-screen .blocks-next { display: grid; justify-items: center; gap: 5px; padding: 6px 3px; }
+  .blocks-screen .blocks-next-title { font-size: 11px; }
+  .blocks-screen .blocks-next-board { grid-template-columns: repeat(4, 12px); gap: 1px; }
+  .blocks-screen .blocks-preview-cell { width: 12px; height: 12px; }
+  .blocks-screen .blocks-controls { flex: 0 0 auto; gap: clamp(8px, 3vw, 16px); margin: 6px auto 2px; }
+  .blocks-screen .blocks-pad {
+    --control-size: clamp(38px, 7vh, 50px);
+    grid-template-columns: repeat(3, var(--control-size));
+    grid-template-rows: repeat(3, var(--control-size));
+    gap: 3px;
+  }
+  .blocks-screen .blocks-pad-empty,
+  .blocks-screen .blocks-control { width: var(--control-size); height: var(--control-size); }
+  .blocks-screen .blocks-rotate { width: clamp(64px, 9vh, 84px); height: clamp(64px, 9vh, 84px); }
+  .blocks-screen .blocks-actions { gap: 0; }
 }
 
 .checkers-stage { display: grid; justify-items: center; gap: 8px; }

@@ -30,6 +30,7 @@
 
   function start(root, App) {
     var age = App.age();
+    root.classList.add('blocks-screen');
     var baseSpeed = age === 'junior' ? 1050 : 850;
     var minSpeed = age === 'junior' ? 650 : 520;
     var timer = null;
@@ -341,6 +342,7 @@
     reset();
     return function cleanup() {
       active = false;
+      root.classList.remove('blocks-screen');
       stopHold();
       if (timer) { clearInterval(timer); timer = null; }
       document.removeEventListener('keydown', onKey);
