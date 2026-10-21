@@ -57,7 +57,14 @@
     var placed = 0;
     var mistakes = 0;
     var total = 0;
-    var lastCats = null;
+    var taskGenerator = UI.uniqueGenerator(function () {
+      var cfg = configFor(age, level);
+      var catIds = chooseCategories(cfg.cats, age);
+      var per = Math.floor(cfg.total / cfg.cats);
+      return catIds.map(function (id) { return { id: id, items: UI.sample(CATS[id].items, per) }; });
+    }, function (groups) {
+      return groups.map(function (group) { return group.id + ':' + group.items.slice().sort().join(','); }).sort().join('|');
+    }, 120, 'sorting');
 
     root.appendChild(el('p', { class: 'game-hint' }, t('game.sorting.hint')));
 
@@ -78,23 +85,17 @@
 
       var cfg = configFor(age, level);
 
-      // Набор групп не повторяет предыдущее поле.
-      var catIds, sig, tries = 0;
-      do {
-        catIds = chooseCategories(cfg.cats, age);
-        sig = catIds.slice().sort().join(',');
-        tries++;
-      } while (sig === lastCats && tries < 20);
-      lastCats = sig;
-
+      var groups = taskGenerator();
+      if (!groups) { UI.showTaskPoolExhausted(root, App); return; }
+      var catIds = groups.map(function (group) { return group.id; });
       var per = Math.floor(cfg.total / cfg.cats);
       total = per * cfg.cats;
 
       // Формируем предметы.
       var items = [];
-      catIds.forEach(function (id) {
-        UI.sample(CATS[id].items, per).forEach(function (emoji) {
-          items.push({ cat: id, emoji: emoji });
+      groups.forEach(function (group) {
+        group.items.forEach(function (emoji) {
+          items.push({ cat: group.id, emoji: emoji });
         });
       });
       items = UI.shuffle(items);

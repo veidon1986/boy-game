@@ -6,7 +6,7 @@
   var RELEASE_NOTICE_VERSION = '2026-10-18-1';
 
   function notifyReleaseIfNeeded() {
-    if (!('Notification' in window) || Notification.permission !== 'granted' ||
+    if (App.demoMode || !('Notification' in window) || Notification.permission !== 'granted' ||
         Store.get('notificationsEnabled', false) !== true) return;
     if (Store.get('releaseNoticeVersion', '') === RELEASE_NOTICE_VERSION) return;
     Store.set('releaseNoticeVersion', RELEASE_NOTICE_VERSION);
@@ -56,7 +56,7 @@
   function boot() {
     App.releaseNoticeVersion = RELEASE_NOTICE_VERSION;
     App.init();
-    notifyReleaseIfNeeded();
+    if (!App.demoMode) notifyReleaseIfNeeded();
     setupServiceWorker();
   }
 

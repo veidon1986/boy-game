@@ -44,7 +44,9 @@
     var matched = 0;
     var moves = 0;
     var timer = null;
-    var lastSet = null;
+    var setGenerator = UI.uniqueGenerator(function () {
+      return UI.sample(EMOJI, configFor(age, level).pairs);
+    }, function (chosen) { return chosen.slice().sort().join(','); }, 120, 'memory');
 
     root.appendChild(el('p', { class: 'game-hint' }, t('game.memory.hint')));
 
@@ -75,14 +77,9 @@
       var cfg = configFor(age, level);
       board.style.setProperty('--cols', cfg.cols);
 
-      // Набор эмодзи не повторяет предыдущее поле.
-      var chosen, key, tries = 0;
-      do {
-        chosen = UI.sample(EMOJI, cfg.pairs);
-        key = chosen.slice().sort().join(',');
-        tries++;
-      } while (key === lastSet && tries < 20);
-      lastSet = key;
+      // Наборы не повторяются в текущем профиле, пока доступен новый вариант.
+      var chosen = setGenerator();
+      if (!chosen) { UI.showTaskPoolExhausted(root, App); return; }
 
       var deck = [];
       chosen.forEach(function (e, i) {

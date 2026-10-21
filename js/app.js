@@ -4,17 +4,20 @@
 
   var el = UI.el;
   var games = [];
+  var demoMode = false;
 
   var AVATARS = ['🦁', '🐼', '🦊', '🐸', '🐵', '🐯', '🐨', '🐷',
                  '🐙', '🦄', '🐢', '🐝', '🚀', '⚽', '🌟', '🎈'];
 
   var App = {
     games: games,
+    demoMode: demoMode,
     mode: 'home',      // 'home' | 'game' | 'achievements' | 'admin'
     current: null,     // id активной игры
     cleanup: null,     // функция очистки активной игры
     els: {}
   };
+  if (demoMode && global.Store && global.Store.setReadOnly) global.Store.setReadOnly(true);
 
   App.register = function (game) { games.push(game); };
 
@@ -31,16 +34,19 @@
   };
 
   // Игры, подходящие возрасту активного ребёнка.
-  App.visibleGames = function () {
+  App.ageGames = function () {
     var age = App.age();
     return games.filter(function (g) {
       return !g.ages || g.ages.indexOf(age) >= 0;
     });
   };
+  App.visibleGames = function () {
+    return App.demoMode ? games.slice() : App.ageGames();
+  };
 
   // Число игр со звёздами для текущего возраста (аркады вроде «Дракончика» не в счёт).
   function scoringGames() {
-    var list = App.visibleGames();
+    var list = App.ageGames();
     var n = 0;
     for (var i = 0; i < list.length; i++) if (!list[i].noStars) n++;
     return n;
@@ -406,6 +412,8 @@
 
     var wrap = el('div', { class: 'home' });
 
+    if (App.demoMode) wrap.appendChild(el('div', { class: 'demo-banner' }, t('demo.banner')));
+
     if (timeUp) {
       wrap.appendChild(el('div', { class: 'limit-banner' }, '🌙 ' + t('limit.up')));
     }
@@ -418,7 +426,7 @@
     ];
     App.els.timeChip = null;
     App.els.timeChipText = null;
-    if (Store.limitMinutes() > 0) {
+    if (Store.limitMinutes() > 0 && !App.demoMode) {
       var chipText = el('span', {}, App.fmtTime(Store.remainingSeconds()));
       App.els.timeChipText = chipText;
       App.els.timeChip = el('div', { class: 'home-badge' + (timeUp ? ' home-badge-alert' : '') }, [
@@ -432,7 +440,7 @@
 
     var grid = el('div', { class: 'game-grid' });
     App.visibleGames().forEach(function (g) {
-      var locked = g.requires && !Achievements.hasRank(g.requires);
+      var locked = !App.demoMode && g.requires && !Achievements.hasRank(g.requires);
       var st = Store.gameStats(g.id);
       var card = el('button', {
         type: 'button',
@@ -474,7 +482,7 @@
   /* ---------- Лимит времени: справка и окна ---------- */
 
   App.canPlay = function () {
-    return Store.limitMinutes() <= 0 || Store.remainingSeconds() > 0;
+    return App.demoMode || Store.limitMinutes() <= 0 || Store.remainingSeconds() > 0;
   };
 
   // Сброс состояния предупреждений при смене ребёнка.
@@ -577,6 +585,7 @@
   };
 
   App.requestInitialPermissions = function () {
+    if (App.demoMode) return false;
     if (Store.get('permissionsPromptShown', false)) return false;
     Store.set('permissionsPromptShown', true);
     App.showParentsGate(function () {
@@ -700,7 +709,7 @@
     if (!App.canPlay()) { App.showBlocked(); return; }
     var game = gameById(id);
     if (!game) return;
-    Analytics.recordLaunch(id);
+    if (!App.demoMode) Analytics.recordLaunch(id);
     stopCurrent();
 
     App.mode = 'game';
@@ -1191,6 +1200,7 @@
   // Показать окно установки один раз за сеанс, когда есть профиль и нет других окон.
   App._installHintShown = false;
   App.maybeShowInstallHint = function (delay) {
+    if (App.demoMode) return;
     if (App._installHintShown) return;
     if (!Store.profile()) return;
     if (!App.els.overlay.classList.contains('hidden')) return;

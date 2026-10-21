@@ -51,7 +51,7 @@
     root.appendChild(stage);
 
     function newSession() {
-      gen = UI.uniqueGenerator(function () { return makeRound(level); }, keyOf, 60);
+      gen = UI.uniqueGenerator(function () { return makeRound(level); }, keyOf, 100, 'find');
       round = 0; firstTry = 0;
       adaptive.reset();
       nextRound();
@@ -60,8 +60,10 @@
     function nextRound() {
       if (timer) { clearTimeout(timer); timer = null; }
       if (round >= TOTAL) { finish(); return; }
+      var task = gen();
+      if (!task) { UI.showTaskPoolExhausted(root, App); return; }
       round++;
-      render(gen());
+      render(task);
     }
 
     function render(data) {

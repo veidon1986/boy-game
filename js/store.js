@@ -9,6 +9,7 @@
 
   var PREFIX = 'boygame.';
   var LEVELS = ['easy', 'medium', 'hard'];
+  var readOnly = false;
 
   function raw(key) {
     try { return global.localStorage.getItem(PREFIX + key); }
@@ -23,17 +24,20 @@
   }
 
   function set(key, value) {
+    if (readOnly) return value;
     try { global.localStorage.setItem(PREFIX + key, JSON.stringify(value)); }
     catch (e) { /* приватный режим — просто не сохраняем */ }
     return value;
   }
 
   function remove(key) {
+    if (readOnly) return;
     try { global.localStorage.removeItem(PREFIX + key); } catch (e) {}
   }
 
   // Записать строку и убедиться, что она сохранилась.
   function writeRaw(key, value) {
+    if (readOnly) return false;
     try {
       global.localStorage.setItem(PREFIX + key, value);
       return global.localStorage.getItem(PREFIX + key) === value;
@@ -154,7 +158,7 @@
   function removeProfile(id) {
     var r = registry();
     r.list = r.list.filter(function (p) { return p.id !== id; });
-    ['stats', 'achievements', 'best', 'usage', 'limitMinutes', 'brainLevel'].forEach(function (k) {
+    ['stats', 'achievements', 'best', 'usage', 'limitMinutes', 'brainLevel', 'taskHistory', 'chessRating'].forEach(function (k) {
       remove('d.' + id + '.' + k);
     });
     if (r.activeId === id) r.activeId = r.list.length ? r.list[0].id : null;
@@ -253,6 +257,28 @@
 
   function setBrainLevel(n) { return set(dKey('brainLevel'), n); }
 
+  function taskHistory(gameId) {
+    var all = get(dKey('taskHistory'), {});
+    return Array.isArray(all[gameId]) ? all[gameId] : [];
+  }
+
+  function rememberTask(gameId, signature, limit) {
+    var all = get(dKey('taskHistory'), {});
+    var history = Array.isArray(all[gameId]) ? all[gameId] : [];
+    if (history.indexOf(signature) >= 0) return false;
+    history.push(signature);
+    all[gameId] = history;
+    set(dKey('taskHistory'), all);
+    return true;
+  }
+
+  function chessRating() {
+    var value = get(dKey('chessRating'), 600);
+    return typeof value === 'number' && value >= 100 ? value : 600;
+  }
+
+  function setChessRating(value) { return set(dKey('chessRating'), Math.max(100, Math.round(value))); }
+
   /* ---------- Дневной лимит времени ---------- */
 
   function todayKey() {
@@ -334,7 +360,7 @@
   function resetUsageFor(id) { return set(dataKey(id, 'usage'), { day: todayKey(), seconds: 0 }); }
 
   function reset() {
-    ['stats', 'achievements', 'best', 'usage', 'limitMinutes', 'brainLevel'].forEach(function (k) {
+    ['stats', 'achievements', 'best', 'usage', 'limitMinutes', 'brainLevel', 'taskHistory', 'chessRating'].forEach(function (k) {
       remove(dKey(k));
     });
   }
@@ -342,6 +368,7 @@
   global.Store = {
     get: get,
     set: set,
+    setReadOnly: function (enabled) { readOnly = !!enabled; },
 
     profiles: profiles,
     activeId: activeId,
@@ -363,6 +390,10 @@
     setBest: setBest,
     brainLevel: brainLevel,
     setBrainLevel: setBrainLevel,
+    taskHistory: taskHistory,
+    rememberTask: rememberTask,
+    chessRating: chessRating,
+    setChessRating: setChessRating,
     limitMinutes: limitMinutes,
     setLimitMinutes: setLimitMinutes,
     usage: usage,

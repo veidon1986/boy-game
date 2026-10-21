@@ -93,6 +93,7 @@
     var firstTry = 0;
     var timer = null;
     var TOTAL = 6;
+    var targetGenerator = null;
     var stage = el('div', { class: 'shadow-stage' });
     var stats = el('div', { class: 'game-stats' });
     var difficulty = UI.segmented(Ages.levels(age).map(function (lv) {
@@ -105,7 +106,20 @@
 
     function newSession() {
       if (timer) { clearTimeout(timer); timer = null; }
-      round = 0; firstTry = 0; render();
+      round = 0; firstTry = 0;
+      targetGenerator = UI.uniqueGenerator(function () {
+        var target = UI.pick(SHAPES);
+        var count = level === 'easy' ? 3 : 4;
+        return {
+          target: target,
+          options: UI.shuffle([target].concat(UI.sample(SHAPES.filter(function (shape) {
+            return shape.name !== target.name;
+          }), count - 1)))
+        };
+      }, function (task) {
+        return task.target.name + '|' + task.options.map(function (shape) { return shape.name; }).sort().join(',');
+      }, 150, 'shadow');
+      render();
     }
     function render() {
       if (round >= TOTAL) {
@@ -115,11 +129,10 @@
       round++;
       stats.textContent = t('common.round') + ' ' + round + ' ' + t('common.of') + ' ' + TOTAL;
       UI.clear(stage);
-      var count = level === 'easy' ? 3 : 4;
-      var target = UI.pick(SHAPES);
-      var options = UI.shuffle([target].concat(UI.sample(SHAPES.filter(function (shape) {
-        return shape.name !== target.name;
-      }), count - 1)));
+      var task = targetGenerator();
+      if (!task) { UI.showTaskPoolExhausted(root, App); return; }
+      var target = task.target;
+      var options = task.options;
       var answered = false;
       var targetCard = el('div', { class: 'shadow-target', role: 'img', 'aria-label': t('game.shadow.target') });
       targetCard.appendChild(makeShape(target, false));

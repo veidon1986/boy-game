@@ -19,8 +19,8 @@
   ];
 
   function scoringGameCount() {
-    if (global.App && global.App.visibleGames) {
-      return global.App.visibleGames().filter(function (g) { return !g.noStars; }).length;
+    if (global.App && (global.App.ageGames || global.App.visibleGames)) {
+      return (global.App.ageGames ? global.App.ageGames() : global.App.visibleGames()).filter(function (g) { return !g.noStars; }).length;
     }
     return 0;
   }
@@ -52,7 +52,7 @@
   function gameList() {
     if (global.App && global.App.games && global.App.games.length) {
       var levels = gameLevels();
-      var list = (global.App.visibleGames ? global.App.visibleGames() : global.App.games);
+      var list = (global.App.ageGames ? global.App.ageGames() : (global.App.visibleGames ? global.App.visibleGames() : global.App.games));
       return list
         .filter(function (g) { return !g.noStars; })
         .map(function (g) { return { id: g.id, titleKey: g.titleKey, levels: levels }; });

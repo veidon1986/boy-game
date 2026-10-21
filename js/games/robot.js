@@ -42,6 +42,44 @@
     var timer = null;
     var routeQueue = [];
     var TOTAL = 5;
+    var routeGenerator = UI.uniqueGenerator(function () {
+      function findPath(at, goal, visited, steps, maxLength) {
+        if (at.r === goal.r && at.c === goal.c) return true;
+        if (steps.length >= maxLength) return false;
+        var choices = UI.shuffle(DIRS.filter(function (dir) {
+          var next = { r: at.r + dir.dr, c: at.c + dir.dc };
+          return next.r >= 0 && next.r < 5 && next.c >= 0 && next.c < 5 && !visited[next.r + ',' + next.c];
+        }));
+        for (var i = 0; i < choices.length; i++) {
+          var dir = choices[i];
+          var next = { r: at.r + dir.dr, c: at.c + dir.dc };
+          var distance = Math.abs(goal.r - next.r) + Math.abs(goal.c - next.c);
+          if (steps.length + 1 + distance > maxLength) continue;
+          var key = next.r + ',' + next.c;
+          visited[key] = true;
+          steps.push(dir.id);
+          if (findPath(next, goal, visited, steps, maxLength)) return true;
+          steps.pop();
+          delete visited[key];
+        }
+        return false;
+      }
+
+      var maxLength = level === 'easy' ? 8 : (level === 'medium' ? 13 : 20);
+      for (var attempt = 0; attempt < 40; attempt++) {
+        var goal = level === 'easy' ? { r: 4, c: UI.randInt(2, 4) } : { r: UI.randInt(0, 4), c: UI.randInt(1, 4) };
+        if (goal.r === 2 && goal.c === 0) continue;
+        var steps = [];
+        if (findPath({ r: 2, c: 0 }, goal, { '2,0': true }, steps, maxLength)) return { steps: steps, goal: goal };
+      }
+      var fallback = UI.pick(ROUTES[level]);
+      var fallbackAt = { r: 2, c: 0 };
+      fallback.forEach(function (id) {
+        var dir = DIRS.filter(function (item) { return item.id === id; })[0];
+        fallbackAt = { r: fallbackAt.r + dir.dr, c: fallbackAt.c + dir.dc };
+      });
+      return { steps: fallback, goal: fallbackAt };
+    }, function (route) { return route.goal.r + ',' + route.goal.c + '|' + route.steps.join(','); }, 180, 'robot');
     var stats = el('div', { class: 'game-stats' });
     var stage = el('div', { class: 'robot-stage' });
     var difficulty = UI.segmented(Ages.levels(age).map(function (lv) {
@@ -54,7 +92,12 @@
 
     function newSession() {
       if (timer) { clearTimeout(timer); timer = null; }
-      routeQueue = UI.shuffle(ROUTES[level]);
+      routeQueue = [];
+      for (var i = 0; i < TOTAL; i++) {
+        var route = routeGenerator();
+        if (!route) { UI.showTaskPoolExhausted(root, App); return; }
+        routeQueue.push(route);
+      }
       round = 0; firstTry = 0; render();
     }
     function render() {
@@ -65,7 +108,8 @@
       round++;
       stats.textContent = t('common.round') + ' ' + round + ' ' + t('common.of') + ' ' + TOTAL;
       UI.clear(stage);
-      var route = routeQueue[round - 1];
+      var routeTask = routeQueue[round - 1];
+      var route = routeTask.steps;
       var position = { r: 2, c: 0 };
       var routeCells = { '2,0': true };
       route.forEach(function (id) {
@@ -73,7 +117,7 @@
         position = { r: position.r + dir.dr, c: position.c + dir.dc };
         routeCells[position.r + ',' + position.c] = true;
       });
-      var goal = position;
+      var goal = routeTask.goal;
       var commands = [];
       var mistakes = 0;
       var locked = false;

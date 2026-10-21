@@ -25,6 +25,8 @@
     var timer = null;
     var TOTAL = 5;
     var seenRoutes = {};
+    var historyRoutes = {};
+    Store.taskHistory('maze').forEach(function (key) { historyRoutes[key] = true; });
     var previousCorner = -1;
     var stats = el('div', { class: 'game-stats' });
     var stage = el('div', { class: 'maze-stage' });
@@ -59,12 +61,15 @@
       steps = UI.shuffle(steps);
       var key = cornerIndex + '|' + steps.join(',');
       var attempts = 0;
-      while (seenRoutes[key] && attempts < 20) {
+      while ((seenRoutes[key] || historyRoutes[key]) && attempts < 100) {
         steps = UI.shuffle(steps);
         key = cornerIndex + '|' + steps.join(',');
         attempts++;
       }
+      if (seenRoutes[key] || historyRoutes[key]) return null;
       seenRoutes[key] = true;
+      historyRoutes[key] = true;
+      Store.rememberTask('maze', key, 1000);
       var cells = {};
       var at = { r: startAt.r, c: startAt.c };
       cells[at.r + ',' + at.c] = true;
@@ -87,6 +92,7 @@
 
       var size = level === 'easy' ? 4 : (level === 'medium' ? 5 : 6);
       var route = makeRoute(size);
+      if (!route) { UI.showTaskPoolExhausted(root, App); return; }
       var commands = [];
       var mistakes = 0;
       var locked = false;

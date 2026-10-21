@@ -206,7 +206,7 @@
     root.appendChild(stage);
 
     function newSession() {
-      gen = UI.uniqueGenerator(function () { return makeQuestion(level, age); }, keyOf, 60);
+      gen = UI.uniqueGenerator(function () { return makeQuestion(level, age); }, keyOf, 120, 'math');
       lastKind = null;
       round = 0; firstTry = 0;
       adaptive.reset();
@@ -215,8 +215,9 @@
 
     function nextQuestion() {
       var q = gen();
+      if (!q) return null;
       var tries = 0;
-      while (q.visual.kind === lastKind && tries < 6) { q = gen(); tries++; }
+      while (q.visual.kind === lastKind && tries < 6) { q = gen(); if (!q) return null; tries++; }
       lastKind = q.visual.kind;
       return q;
     }
@@ -226,7 +227,9 @@
       if (round >= TOTAL) { finish(); return; }
       round++;
       progress.textContent = t('common.round') + ' ' + round + ' ' + t('common.of') + ' ' + TOTAL;
-      render(nextQuestion());
+      var question = nextQuestion();
+      if (!question) { UI.showTaskPoolExhausted(root, App); return; }
+      render(question);
     }
 
     function render(q) {

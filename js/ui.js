@@ -2,6 +2,8 @@
 (function (global) {
   'use strict';
 
+  var t = global.t || function (key) { return key; };
+
   function el(tag, attrs, children) {
     var node = document.createElement(tag);
     if (attrs) {
@@ -89,21 +91,42 @@
   }
 
   // Генератор, который не повторяет уже выданные элементы (по ключу).
-  function uniqueGenerator(make, keyFn, maxTries) {
+  function uniqueGenerator(make, keyFn, maxTries, historyKey) {
     maxTries = maxTries || 60;
     var seen = {};
+    var persistentSeen = {};
+    if (historyKey && global.Store && global.Store.taskHistory) {
+      global.Store.taskHistory(historyKey).forEach(function (key) { persistentSeen[key] = 1; });
+    }
     function next() {
       var item, key, fresh = false;
       for (var i = 0; i < maxTries; i++) {
         item = make();
         key = keyFn(item);
-        if (seen[key] === undefined) { seen[key] = 1; fresh = true; break; }
+        if (seen[key] === undefined && persistentSeen[key] === undefined) {
+          seen[key] = 1;
+          persistentSeen[key] = 1;
+          if (historyKey && global.Store && global.Store.rememberTask) {
+            global.Store.rememberTask(historyKey, key, 1000);
+          }
+          fresh = true;
+          break;
+        }
       }
-      if (!fresh && item !== undefined) seen[keyFn(item)] = 1; // сдаёмся, но помечаем
-      return item;
+      return fresh ? item : null;
     }
     next.reset = function () { seen = {}; };
     return next;
+  }
+
+  function showTaskPoolExhausted(root, App) {
+    clear(root);
+    root.appendChild(el('div', { class: 'chess-course-complete' }, [
+      el('div', { class: 'chess-course-icon' }, '✅'),
+      el('h2', {}, t('common.tasksComplete')),
+      el('p', {}, t('common.tasksCompleteText')),
+      el('button', { type: 'button', class: 'btn primary wide', onclick: function () { App.goHome(); } }, '🏠 ' + t('chess.home'))
+    ]));
   }
 
   // Ряд звёздочек (заполненные/пустые).
@@ -129,6 +152,7 @@
     sample: sample,
     segmented: segmented,
     uniqueGenerator: uniqueGenerator,
+    showTaskPoolExhausted: showTaskPoolExhausted,
     starsRow: starsRow,
     cardButton: cardButton
   };

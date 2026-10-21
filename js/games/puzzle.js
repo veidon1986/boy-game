@@ -6,7 +6,13 @@
   var SCENES = [
     ['☀️', '☁️', '🌷', '🦋'], ['🐠', '🫧', '🐚', '🌊'],
     ['🐱', '🧶', '🪟', '🌙'], ['🚗', '🌳', '🏠', '☁️'],
-    ['🍓', '🍃', '🐞', '🌼'], ['🐸', '🪷', '🌿', '🐝']
+    ['🍓', '🍃', '🐞', '🌼'], ['🐸', '🪷', '🌿', '🐝'],
+    ['🐻', '🍯', '🌲', '☀️'], ['🐰', '🥕', '🌱', '☁️'],
+    ['🐦', '🪺', '🥚', '🌳'], ['🐢', '🌊', '🪨', '🌿'],
+    ['🦉', '🌙', '⭐', '🌲'], ['🐝', '🌻', '🌼', '🍃'],
+    ['🚂', '🛤️', '🌄', '☁️'], ['⛵', '🌊', '🐬', '☀️'],
+    ['🦕', '🌿', '🌋', '☁️'], ['🐧', '❄️', '🧊', '🌊'],
+    ['🍉', '🔪', '🍽️', '😋'], ['🧁', '🎂', '🎈', '🎁']
   ];
 
   function start(root, App) {
@@ -16,6 +22,10 @@
     var firstTry = 0;
     var timer = null;
     var TOTAL = 5;
+    var sceneGenerator = UI.uniqueGenerator(function () {
+      var count = level === 'easy' ? 2 : (level === 'medium' ? 3 : 4);
+      return UI.pick(SCENES).slice(0, count);
+    }, function (scene) { return scene.slice().sort().join(','); }, 100, 'puzzle');
     var stage = el('div', { class: 'puzzle-stage' });
     var stats = el('div', { class: 'game-stats' });
     var difficulty = UI.segmented(Ages.levels(age).map(function (lv) {
@@ -43,7 +53,9 @@
       stats.textContent = t('common.round') + ' ' + rounds + ' ' + t('common.of') + ' ' + TOTAL;
       UI.clear(stage);
       var count = level === 'easy' ? 2 : (level === 'medium' ? 3 : 4);
-      var image = UI.shuffle(SCENES[(rounds - 1) % SCENES.length].slice(0, count));
+      var scene = sceneGenerator();
+      if (!scene) { UI.showTaskPoolExhausted(root, App); return; }
+      var image = UI.shuffle(scene);
       var selected = null;
       var placed = [];
       var roundMistakes = 0;

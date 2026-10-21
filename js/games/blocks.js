@@ -37,18 +37,26 @@
     var paused = false;
     var board = [];
     var piece = null;
+    var nextPiece = null;
     var score = 0;
     var lines = 0;
     var best = Store.best('blocks');
     var cells = [];
+    var previewCells = [];
     var status = el('div', { class: 'game-stats blocks-stats' });
+    var topbar = el('div', { class: 'blocks-topbar' }, [status]);
     var boardEl = el('div', { class: 'blocks-board', role: 'grid', 'aria-label': t('game.blocks') });
-    var stage = el('div', { class: 'blocks-stage' }, [status, boardEl]);
+    var previewEl = el('div', { class: 'blocks-next-board', role: 'grid', 'aria-label': t('blocks.next') });
+    var previewPanel = el('div', { class: 'blocks-next' }, [
+      el('div', { class: 'blocks-next-title' }, t('blocks.next')),
+      previewEl
+    ]);
+    var stage = el('div', { class: 'blocks-stage' }, [previewPanel, boardEl]);
     var controls = el('div', { class: 'blocks-controls' });
-
-    root.appendChild(el('p', { class: 'game-hint' }, t('blocks.hint')));
-    root.appendChild(stage);
-    root.appendChild(controls);
+    var pad = el('div', { class: 'blocks-pad', role: 'group', 'aria-label': t('blocks.directionControls') });
+    var actions = el('div', { class: 'blocks-actions' });
+    var holdDelay = null;
+    var holdRepeat = null;
 
     function speedNow() {
       return Math.max(minSpeed, baseSpeed - Math.floor(lines / 5) * 60);
@@ -56,7 +64,8 @@
 
     function updateStatus() {
       status.textContent = t('blocks.score') + ': ' + score + '   ·   ' +
-        t('blocks.lines') + ': ' + lines + '   ·   ' + t('runner.best') + ': ' + best;
+        t('blocks.lines') + ': ' + lines + '   ·   ' + t('runner.best') + ': ' + best +
+        '   ·   ' + t('blocks.speed') + ': ' + (speedNow() / 1000).toFixed(1) + ' ' + t('blocks.secondsPerStep');
     }
 
     function makeBoard() {
@@ -77,8 +86,33 @@
 
     function randomPiece() {
       var type = UI.randInt(0, SHAPES.length - 1);
-    var shape = SHAPES[type].map(function (row) { return row.slice(); });
-    return { type: type + 1, shape: shape, x: Math.floor((WIDTH - shape[0].length) / 2), y: 0 };
+      var shape = SHAPES[type].map(function (row) { return row.slice(); });
+      return { type: type + 1, shape: shape, x: Math.floor((WIDTH - shape[0].length) / 2), y: 0 };
+    }
+
+    function makePreview() {
+      previewCells = [];
+      UI.clear(previewEl);
+      for (var i = 0; i < 16; i++) {
+        var cell = el('div', { class: 'blocks-preview-cell' });
+        previewCells.push(cell);
+        previewEl.appendChild(cell);
+      }
+    }
+
+    function paintPreview() {
+      for (var i = 0; i < previewCells.length; i++) previewCells[i].className = 'blocks-preview-cell';
+      if (!nextPiece) return;
+      var offsetX = Math.floor((4 - nextPiece.shape[0].length) / 2);
+      var offsetY = Math.floor((4 - nextPiece.shape.length) / 2);
+      for (var r = 0; r < nextPiece.shape.length; r++) {
+        for (var c = 0; c < nextPiece.shape[r].length; c++) {
+          if (nextPiece.shape[r][c]) {
+            var index = (offsetY + r) * 4 + offsetX + c;
+            previewCells[index].className = 'blocks-preview-cell block-' + nextPiece.type;
+          }
+        }
+      }
     }
 
     function fits(shape, x, y) {
@@ -129,7 +163,9 @@
     }
 
     function spawn() {
-      piece = randomPiece();
+      piece = nextPiece || randomPiece();
+      nextPiece = randomPiece();
+      paintPreview();
       if (!fits(piece.shape, piece.x, piece.y)) gameOver();
     }
 
@@ -186,7 +222,9 @@
     function togglePause() {
       if (!piece || !active) return;
       paused = !paused;
-      pauseButton.textContent = t(paused ? 'blocks.resume' : 'blocks.pause');
+      pauseButton.textContent = '';
+      pauseButton.setAttribute('aria-label', t(paused ? 'blocks.resume' : 'blocks.pause'));
+      pauseButton.setAttribute('title', t(paused ? 'blocks.resume' : 'blocks.pause'));
       if (paused) { if (timer) clearInterval(timer); timer = null; }
       else startTimer();
     }
@@ -215,8 +253,12 @@
       lines = 0;
       active = true;
       paused = false;
-      pauseButton.textContent = t('blocks.pause');
+      pauseButton.textContent = '';
+      pauseButton.setAttribute('aria-label', t('blocks.pause'));
+      pauseButton.setAttribute('title', t('blocks.pause'));
       makeBoard();
+      makePreview();
+      nextPiece = randomPiece();
       spawn();
       paint();
       startTimer();
@@ -226,12 +268,63 @@
       return el('button', { type: 'button', class: className, 'aria-label': label, onclick: action }, key);
     }
 
-    var pauseButton = button(t('blocks.pause'), 'btn blocks-pause', togglePause, t('blocks.pause'));
-    controls.appendChild(button('⬅️', 'blocks-control', function () { move(-1, 0); }, t('blocks.left')));
-    controls.appendChild(button('⬇️', 'blocks-control', function () { move(0, 1); }, t('blocks.down')));
-    controls.appendChild(button('⬆️', 'blocks-control', turn, t('blocks.rotate')));
-    controls.appendChild(button('➡️', 'blocks-control', function () { move(1, 0); }, t('blocks.right')));
-    controls.appendChild(pauseButton);
+    function stopHold() {
+      if (holdDelay) { clearTimeout(holdDelay); holdDelay = null; }
+      if (holdRepeat) { clearInterval(holdRepeat); holdRepeat = null; }
+    }
+
+    function repeatButton(icon, className, action, label) {
+      var pointerStarted = false;
+      var btn = el('button', { type: 'button', class: className, 'aria-label': label }, icon);
+      btn.addEventListener('pointerdown', function (event) {
+        event.preventDefault();
+        pointerStarted = true;
+        stopHold();
+        action();
+        if (btn.setPointerCapture) btn.setPointerCapture(event.pointerId);
+        holdDelay = setTimeout(function () {
+          holdDelay = null;
+          holdRepeat = setInterval(action, 85);
+        }, 230);
+      });
+      btn.addEventListener('pointerup', function () {
+        stopHold();
+        setTimeout(function () { pointerStarted = false; }, 0);
+      });
+      btn.addEventListener('pointercancel', function () { stopHold(); pointerStarted = false; });
+      btn.addEventListener('lostpointercapture', stopHold);
+      btn.addEventListener('click', function (event) {
+        if (pointerStarted) {
+          pointerStarted = false;
+          event.preventDefault();
+        } else action();
+      });
+      return btn;
+    }
+
+    var pauseButton = button('', 'btn blocks-pause', togglePause, t('blocks.pause'));
+    pauseButton.setAttribute('title', t('blocks.pause'));
+    topbar.appendChild(pauseButton);
+    var rotateButton = el('button', {
+      type: 'button', class: 'blocks-rotate', 'aria-label': t('blocks.rotate'), onclick: turn
+    });
+    pad.appendChild(el('span', { class: 'blocks-pad-empty', 'aria-hidden': 'true' }));
+    pad.appendChild(button('', 'blocks-control blocks-up', turn, t('blocks.rotate')));
+    pad.appendChild(el('span', { class: 'blocks-pad-empty', 'aria-hidden': 'true' }));
+    pad.appendChild(repeatButton('', 'blocks-control blocks-left', function () { move(-1, 0); }, t('blocks.left')));
+    pad.appendChild(el('span', { class: 'blocks-pad-center', 'aria-hidden': 'true' }));
+    pad.appendChild(repeatButton('', 'blocks-control blocks-right', function () { move(1, 0); }, t('blocks.right')));
+    pad.appendChild(el('span', { class: 'blocks-pad-empty', 'aria-hidden': 'true' }));
+    pad.appendChild(repeatButton('', 'blocks-control blocks-down', function () { move(0, 1); }, t('blocks.down')));
+    pad.appendChild(el('span', { class: 'blocks-pad-empty', 'aria-hidden': 'true' }));
+    actions.appendChild(rotateButton);
+    controls.appendChild(pad);
+    controls.appendChild(actions);
+
+    root.appendChild(el('p', { class: 'game-hint' }, t('blocks.hint')));
+    root.appendChild(topbar);
+    root.appendChild(stage);
+    root.appendChild(controls);
 
     function onKey(event) {
       var handled = true;
@@ -248,6 +341,7 @@
     reset();
     return function cleanup() {
       active = false;
+      stopHold();
       if (timer) { clearInterval(timer); timer = null; }
       document.removeEventListener('keydown', onKey);
     };

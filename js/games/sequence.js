@@ -146,7 +146,7 @@
     root.appendChild(stage);
 
     function newSession() {
-      gen = UI.uniqueGenerator(function () { return makeRound(level, age); }, keyOf, 60);
+      gen = UI.uniqueGenerator(function () { return makeRound(level, age); }, keyOf, 100, 'sequence');
       lastTag = null;
       round = 0; firstTry = 0;
       adaptive.reset();
@@ -159,9 +159,10 @@
       round++;
       progress.textContent = t('common.round') + ' ' + round + ' ' + t('common.of') + ' ' + TOTAL;
       var data = gen();
+      if (!data) { UI.showTaskPoolExhausted(root, App); return; }
       // по возможности не даём два одинаковых типа задания подряд
       var tries = 0;
-      while (data.tag === lastTag && tries < 6) { data = gen(); tries++; }
+      while (data.tag === lastTag && tries < 6) { data = gen(); if (!data) { UI.showTaskPoolExhausted(root, App); return; } tries++; }
       lastTag = data.tag;
       render(data);
     }

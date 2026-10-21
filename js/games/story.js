@@ -7,7 +7,14 @@
     ['🌱', '💧', '🌿', '🌷'], ['🥚', '🐣', '🐥', '🐔'],
     ['🌧️', '☁️', '🌈', '☀️'], ['🧼', '👐', '🍽️', '😋'],
     ['🛏️', '🌞', '👕', '🍎'], ['🧺', '🧦', '🧼', '☀️'],
-    ['🐛', '🍃', '🦋', '🌸'], ['☁️', '❄️', '⛄', '🌷']
+    ['🐛', '🍃', '🦋', '🌸'], ['☁️', '❄️', '⛄', '🌷'],
+    ['🌰', '🌱', '🌿', '🌳', '🍎'], ['🐣', '🐥', '🐔', '🥚', '🪺'],
+    ['🌧️', '💧', '🌱', '🌷', '☀️'], ['🧑', '🪥', '🧼', '👐', '😊'],
+    ['🐶', '🦴', '🍽️', '😋', '🛏️'], ['🧺', '👕', '🧼', '☀️', '👚'],
+    ['🐛', '🍃', '🛡️', '🦋', '🌸'], ['❄️', '⛄', '🌤️', '💧', '🌷'],
+    ['🌱', '🌞', '💧', '🌿', '🌻'], ['🥕', '🐰', '🏠', '🥣', '😋'],
+    ['☁️', '🌧️', '🌊', '🌤️', '🌈'], ['🐚', '🥚', '🐣', '🐥', '🪺'],
+    ['🛏️', '⏰', '🧦', '👕', '🍎'], ['🍎', '🧺', '🚿', '🔪', '🥧']
   ];
 
   function start(root, App) {
@@ -17,6 +24,10 @@
     var firstTry = 0;
     var timer = null;
     var TOTAL = 5;
+    var storyGenerator = UI.uniqueGenerator(function () {
+      var length = level === 'easy' ? 3 : (level === 'medium' ? 4 : 5);
+      return UI.pick(STORIES).slice(0, length);
+    }, function (story) { return story.join(','); }, 120, 'story');
     var stats = el('div', { class: 'game-stats' });
     var stage = el('div', { class: 'story-stage' });
     var difficulty = UI.segmented(Ages.levels(age).map(function (lv) {
@@ -39,8 +50,8 @@
       round++;
       stats.textContent = t('common.round') + ' ' + round + ' ' + t('common.of') + ' ' + TOTAL;
       UI.clear(stage);
-      var length = level === 'easy' ? 3 : (level === 'medium' ? 4 : 5);
-      var story = STORIES[(round - 1) % STORIES.length].slice(0, length);
+      var story = storyGenerator();
+      if (!story) { UI.showTaskPoolExhausted(root, App); return; }
       var correctOrder = story.slice();
       var shuffled = UI.shuffle(story);
       var selected = [];

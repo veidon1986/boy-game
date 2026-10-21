@@ -5,14 +5,38 @@
   var el = UI.el;
   var WORDS = {
     ru: {
-      3: [{ icon: '🐱', word: 'кот' }, { icon: '🏠', word: 'дом' }, { icon: '⚽', word: 'мяч' }],
-      4: [{ icon: '🐟', word: 'рыба' }, { icon: '🐘', word: 'слон' }, { icon: '🌙', word: 'луна' }],
-      5: [{ icon: '🍋', word: 'лимон' }, { icon: '🚂', word: 'поезд' }, { icon: '🌼', word: 'цветы' }]
+      3: [
+        { icon: '🐱', word: 'кот' }, { icon: '🏠', word: 'дом' }, { icon: '⚽', word: 'мяч' },
+        { icon: '🐕', word: 'пёс' }, { icon: '🦊', word: 'лис' }, { icon: '🐂', word: 'бык' },
+        { icon: '🧀', word: 'сыр' }, { icon: '🍵', word: 'чай' }, { icon: '🦀', word: 'рак' }, { icon: '🐝', word: 'жук' }
+      ],
+      4: [
+        { icon: '🐟', word: 'рыба' }, { icon: '🐘', word: 'слон' }, { icon: '🌙', word: 'луна' },
+        { icon: '🧼', word: 'мыло' }, { icon: '🦆', word: 'утка' }, { icon: '🍄', word: 'гриб' },
+        { icon: '🐺', word: 'волк' }, { icon: '🦊', word: 'лиса' }, { icon: '🪁', word: 'змея' }, { icon: '🌉', word: 'мост' }
+      ],
+      5: [
+        { icon: '🍋', word: 'лимон' }, { icon: '🚂', word: 'поезд' }, { icon: '🌼', word: 'цветы' },
+        { icon: '🍌', word: 'банан' }, { icon: '🐯', word: 'тигры' }, { icon: '🧸', word: 'мишка' },
+        { icon: '💧', word: 'ручей' }, { icon: '🌲', word: 'сосна' }, { icon: '🍑', word: 'слива' }, { icon: '🍰', word: 'торты' }
+      ]
     },
     en: {
-      3: [{ icon: '🐱', word: 'cat' }, { icon: '🏠', word: 'hut' }, { icon: '☀️', word: 'sun' }],
-      4: [{ icon: '🐟', word: 'fish' }, { icon: '🦁', word: 'lion' }, { icon: '🌙', word: 'moon' }],
-      5: [{ icon: '🍋', word: 'lemon' }, { icon: '🚂', word: 'train' }, { icon: '🌱', word: 'plant' }]
+      3: [
+        { icon: '🐱', word: 'cat' }, { icon: '🏠', word: 'hut' }, { icon: '☀️', word: 'sun' },
+        { icon: '🐶', word: 'dog' }, { icon: '🖊️', word: 'pen' }, { icon: '🥤', word: 'cup' },
+        { icon: '🚌', word: 'bus' }, { icon: '🦊', word: 'fox' }, { icon: '🎩', word: 'hat' }, { icon: '🐷', word: 'pig' }
+      ],
+      4: [
+        { icon: '🐟', word: 'fish' }, { icon: '🦁', word: 'lion' }, { icon: '🌙', word: 'moon' },
+        { icon: '🌳', word: 'tree' }, { icon: '🐸', word: 'frog' }, { icon: '🐦', word: 'bird' },
+        { icon: '⭐', word: 'star' }, { icon: '📚', word: 'book' }, { icon: '🦆', word: 'duck' }, { icon: '🥛', word: 'milk' }
+      ],
+      5: [
+        { icon: '🍋', word: 'lemon' }, { icon: '🚂', word: 'train' }, { icon: '🌱', word: 'plant' },
+        { icon: '🍎', word: 'apple' }, { icon: '🐯', word: 'tiger' }, { icon: '🍞', word: 'bread' },
+        { icon: '🪑', word: 'chair' }, { icon: '☁️', word: 'cloud' }, { icon: '🐑', word: 'sheep' }, { icon: '😊', word: 'smile' }
+      ]
     }
   };
 
@@ -23,6 +47,11 @@
     var firstTry = 0;
     var timer = null;
     var TOTAL = 5;
+    var wordGenerator = UI.uniqueGenerator(function () {
+      var lang = I18N.getLang() === 'en' ? 'en' : 'ru';
+      var length = level === 'easy' ? 3 : (level === 'medium' ? 4 : 5);
+      return { lang: lang, item: UI.pick(WORDS[lang][length]) };
+    }, function (task) { return task.lang + '|' + task.item.word; }, 100, 'wordbuild');
     var stats = el('div', { class: 'game-stats' });
     var stage = el('div', { class: 'wordbuild-stage' });
     var difficulty = UI.segmented(Ages.levels(age).map(function (lv) {
@@ -45,9 +74,9 @@
       round++;
       stats.textContent = t('common.round') + ' ' + round + ' ' + t('common.of') + ' ' + TOTAL;
       UI.clear(stage);
-      var lang = I18N.getLang() === 'en' ? 'en' : 'ru';
-      var length = level === 'easy' ? 3 : (level === 'medium' ? 4 : 5);
-      var word = UI.pick(WORDS[lang][length]);
+      var task = wordGenerator();
+      if (!task) { UI.showTaskPoolExhausted(root, App); return; }
+      var word = task.item;
       var letters = UI.shuffle(word.word.split('').map(function (letter, index) {
         return { letter: letter, id: index, used: false };
       }));

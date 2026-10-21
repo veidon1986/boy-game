@@ -12,6 +12,22 @@
     var firstTry = 0;
     var timer = null;
     var TOTAL = 5;
+    var taskGenerator = UI.uniqueGenerator(function () {
+      var size = level === 'easy' ? 2 : (level === 'medium' ? 3 : 4);
+      var matrix = [];
+      for (var r = 0; r < size; r++) {
+        matrix[r] = [];
+        for (var c = 0; c < size; c++) matrix[r][c] = matrix[r][Math.min(c, size - 1 - c)] || UI.pick(COLORS);
+      }
+      var targetRow = UI.randInt(0, size - 1);
+      var targetCol = UI.randInt(0, size - 1);
+      var answer = matrix[targetRow][size - 1 - targetCol];
+      var options = UI.shuffle([answer].concat(UI.sample(COLORS.filter(function (x) { return x !== answer; }), 3)));
+      return { size: size, matrix: matrix, targetRow: targetRow, targetCol: targetCol, answer: answer, options: options };
+    }, function (task) {
+      return task.size + '|' + task.matrix.map(function (row) { return row.join(''); }).join('/') + '|' +
+        task.targetRow + ',' + task.targetCol + '|' + task.answer;
+    }, 150, 'symmetry');
     var stats = el('div', { class: 'game-stats' });
     var stage = el('div', { class: 'symmetry-stage' });
     var difficulty = UI.segmented(Ages.levels(age).map(function (lv) {
@@ -34,17 +50,13 @@
       round++;
       stats.textContent = t('common.round') + ' ' + round + ' ' + t('common.of') + ' ' + TOTAL;
       UI.clear(stage);
-      var size = level === 'easy' ? 2 : (level === 'medium' ? 3 : 4);
-      var matrix = [];
-      for (var r = 0; r < size; r++) {
-        matrix[r] = [];
-        for (var c = 0; c < size; c++) {
-          matrix[r][c] = matrix[r][Math.min(c, size - 1 - c)] || UI.pick(COLORS);
-        }
-      }
-      var targetRow = UI.randInt(0, size - 1);
-      var targetCol = UI.randInt(0, size - 1);
-      var answer = matrix[targetRow][size - 1 - targetCol];
+      var task = taskGenerator();
+      if (!task) { UI.showTaskPoolExhausted(root, App); return; }
+      var size = task.size;
+      var matrix = task.matrix;
+      var targetRow = task.targetRow;
+      var targetCol = task.targetCol;
+      var answer = task.answer;
       var done = false;
       var board = el('div', { class: 'symmetry-board' });
       board.style.gridTemplateColumns = 'repeat(' + size + ', minmax(48px, 76px))';
@@ -56,7 +68,7 @@
         }
       }
       stage.appendChild(board);
-      var options = UI.shuffle([answer].concat(UI.sample(COLORS.filter(function (x) { return x !== answer; }), 3)));
+      var options = task.options;
       var choices = el('div', { class: 'symmetry-options' });
       options.forEach(function (item) {
         var button = el('button', {

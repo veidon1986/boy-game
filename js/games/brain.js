@@ -152,9 +152,16 @@
     }
 
     function render() {
+      if (level > TOTAL) { victory(); return; }
       locked = false;
       mistakes = 0;
       var data = makeLevel(level);
+      var taskKey = data.q + '|' + (data.scene || '') + '|' + data.options.slice().sort().join(',') + '|' + data.options[data.answer];
+      if (!Store.rememberTask('brain', taskKey, TOTAL + WARMUP)) {
+        level++;
+        render();
+        return;
+      }
       UI.clear(stage);
 
       progressEl.textContent = t('brain.progress', { n: level, total: TOTAL });
@@ -210,14 +217,6 @@
           el('div', { class: 'result-actions' }, [
             el('button', {
               type: 'button', class: 'btn primary',
-              onclick: function () {
-                Sound.play('tap');
-                App.hideOverlay();
-                level = 1; Store.setBrainLevel(1); render();
-              }
-            }, '🔁 ' + t('brain.restart')),
-            el('button', {
-              type: 'button', class: 'btn',
               onclick: function () { Sound.play('tap'); App.hideOverlay(); App.goHome(); }
             }, '🏠 ' + t('home'))
           ])
