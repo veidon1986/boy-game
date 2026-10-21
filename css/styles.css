@@ -1032,6 +1032,68 @@ button { font-family: inherit; cursor: pointer; }
   background: #d8f2ff; touch-action: none; cursor: pointer;
 }
 
+/* ---------- Бонусные игры за высокие достижения ---------- */
+.blocks-stage { width: min(100%, 380px); margin: 0 auto; }
+.blocks-board {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 2px;
+  padding: 6px;
+  border-radius: 14px;
+  background: rgba(43, 35, 80, .72);
+  box-shadow: var(--shadow-sm);
+}
+.blocks-cell { aspect-ratio: 1; min-width: 0; border-radius: 3px; background: rgba(255,255,255,.18); }
+.blocks-cell.block-1 { background: #4fd1df; }
+.blocks-cell.block-2 { background: #637cff; }
+.blocks-cell.block-3 { background: #ff9b56; }
+.blocks-cell.block-4 { background: #ffd54a; }
+.blocks-cell.block-5 { background: #57cf85; }
+.blocks-cell.block-6 { background: #b37bff; }
+.blocks-cell.block-7 { background: #ff6f91; }
+.blocks-controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 12px auto; }
+.blocks-control { min-width: 52px; min-height: 48px; border: 0; border-radius: 14px; background: #fff; box-shadow: var(--shadow-sm); font-size: 24px; }
+.blocks-pause { min-height: 48px; }
+
+.checkers-stage { display: grid; justify-items: center; gap: 8px; }
+.checkers-status { max-width: 560px; }
+.checkers-board {
+  display: grid;
+  grid-template-columns: repeat(8, clamp(30px, 9vw, 52px));
+  gap: 2px;
+  padding: 6px;
+  border-radius: 14px;
+  background: #513c96;
+  box-shadow: var(--shadow-sm);
+}
+.checkers-square {
+  width: clamp(30px, 9vw, 52px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+}
+.checkers-square.light { background: #f2dfbd; }
+.checkers-square.dark { background: #956846; }
+.checkers-square.selected { box-shadow: inset 0 0 0 4px #ffe45c; }
+.checkers-square.target { box-shadow: inset 0 0 0 4px #64e0a0; }
+.checkers-piece {
+  width: 76%;
+  height: 76%;
+  display: grid;
+  place-items: center;
+  border: 3px solid rgba(255,255,255,.85);
+  border-radius: 50%;
+  box-shadow: 0 3px 5px rgba(0,0,0,.3), inset 0 2px 3px rgba(255,255,255,.45);
+  font-size: clamp(17px, 5vw, 27px);
+  line-height: 1;
+}
+.checkers-piece.red { color: #fff; background: #ed526d; }
+.checkers-piece.blue { color: #fff; background: #4968dc; }
+.checkers-piece.king { border-color: #ffe45c; }
+.checkers-controls { display: flex; justify-content: center; margin: 12px 0; }
+
 /* ---------- Анимации ---------- */
 
 @keyframes pop {

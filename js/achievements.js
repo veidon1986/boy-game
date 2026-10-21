@@ -40,7 +40,7 @@
     ];
   }
 
-  // Доступные возрасту уровни сложности (для набора «идеально пройдено»).
+  // Доступные возрасту уровни сложности, за которые можно получить кубок.
   function gameLevels() {
     if (global.Ages && global.Ages.levels) {
       var age = (global.App && global.App.age) ? global.App.age() : undefined;
@@ -60,30 +60,28 @@
     return [];
   }
 
-  // Локализованный список всех наград.
+  // Локализованный список всех наград. Игры без звёзд — бонусные и кубки
+  // за сложности не получают.
   function defs() {
     var list = [];
     var games = gameList();
 
     games.forEach(function (g) {
       var gname = t(g.titleKey);
-      list.push({
-        id: 'first.' + g.id,
-        icon: '🎉',
-        title: t('ach.first.title', { game: gname }),
-        desc: t('ach.first.desc', { game: gname }),
-        ok: function (c) { return !!(c.stats[g.id] && c.stats[g.id].plays > 0); }
-      });
       g.levels.forEach(function (lv) {
         var lname = t('common.' + lv);
+        var cup = lv === 'easy' ? 'bronze' : (lv === 'medium' ? 'silver' : 'gold');
+        var icon = lv === 'easy' ? '🥉' : (lv === 'medium' ? '🥈' : '🥇');
         list.push({
-          id: 'perfect.' + g.id + '.' + lv,
-          icon: '⭐',
-          title: t('ach.perfect.title', { game: gname, level: lname }),
-          desc: t('ach.perfect.desc', { game: gname, level: lname }),
+          id: 'cup.' + g.id + '.' + lv,
+          gameId: g.id,
+          level: lv,
+          icon: icon,
+          title: t('ach.cup.title', { cup: t('ach.cup.' + cup), game: gname }),
+          desc: t('ach.cup.desc', { level: lname }),
           ok: function (c) {
             var s = c.stats[g.id];
-            return !!(s && s[lv] && s[lv].stars >= 3);
+            return !!(s && s[lv] && s[lv].plays > 0);
           }
         });
       });
@@ -126,15 +124,20 @@
   function all() {
     var c = context();
     return defs().map(function (d) {
-      return { id: d.id, icon: d.icon, title: d.title, desc: d.desc, unlocked: !!c.unlocked[d.id] };
+      return { id: d.id, icon: d.icon, title: d.title, desc: d.desc, unlocked: !!c.unlocked[d.id] || d.ok(c) };
     });
   }
 
   // Проверить и выдать новые награды. Возвращает список только что открытых.
-  function checkNew() {
+  function checkNew(gameId, level) {
     var c = context();
     var out = [];
     defs().forEach(function (d) {
+      // Кубки выводятся из статистики, поэтому старые профили сразу увидят
+      // заработанное. Показываем всплывающий кубок только при первом завершении
+      // именно этой сложности, а не пачкой после обновления приложения.
+      if (d.gameId && (d.gameId !== gameId || d.level !== level ||
+          !c.stats[d.gameId] || !c.stats[d.gameId][d.level] || c.stats[d.gameId][d.level].plays !== 1)) return;
       if (!c.unlocked[d.id] && d.ok(c)) {
         Store.unlockAchievement(d.id);
         out.push({ id: d.id, icon: d.icon, title: d.title, desc: d.desc, unlocked: true });
@@ -144,10 +147,10 @@
   }
 
   function count() {
-    // Считаем только награды, актуальные для текущего возраста.
-    var unlocked = Store.achievements();
+    // Кубки восстанавливаются по игровой статистике, в том числе в старых профилях.
+    var c = context();
     var n = 0;
-    defs().forEach(function (d) { if (unlocked[d.id]) n++; });
+    defs().forEach(function (d) { if (c.unlocked[d.id] || d.ok(c)) n++; });
     return n;
   }
   function total() { return defs().length; }
@@ -180,57 +183,7 @@
   }
 
   function defsForContext(ctx, age) {
-    var list = [];
-    var games = (global.App && global.App.visibleGames) ? global.App.visibleGames() : (global.App && global.App.games || []);
-    var gl = games.filter(function (g) { return !g.noStars; }).map(function (g) { return { id: g.id, titleKey: g.titleKey }; });
-    if (!ctx) ctx = context();
-    gl.forEach(function (g) {
-      var gname = t(g.titleKey);
-      list.push({
-        id: 'first.' + g.id, icon: '🎉',
-        title: t('ach.first.title', { game: gname }),
-        desc: t('ach.first.desc', { game: gname }),
-        ok: function (c) { return !!(c.stats[g.id] && c.stats[g.id].plays > 0); }
-      });
-      ['easy','medium','hard'].forEach(function (lv) {
-        var lname = t('common.' + lv);
-        list.push({
-          id: 'perfect.' + g.id + '.' + lv, icon: '⭐',
-          title: t('ach.perfect.title', { game: gname, level: lname }),
-          desc: t('ach.perfect.desc', { game: gname, level: lname }),
-          ok: function (c) {
-            var s = c.stats[g.id]; return !!(s && s[lv] && s[lv].stars >= 3);
-          }
-        });
-      });
-    });
-    var milestones = (function () {
-      var max = Math.max(3, scoringGameCount() * 3);
-      var a = Math.max(1, Math.round(max * 0.2));
-      var b = Math.round(max * (8 / 15));
-      if (b <= a) b = a + 1;
-      if (b >= max) b = max - 1;
-      return [
-        { id: STAR_SLOTS[0].id, icon: STAR_SLOTS[0].icon, need: a, titleKey: STAR_SLOTS[0].titleKey, descKey: STAR_SLOTS[0].descKey },
-        { id: STAR_SLOTS[1].id, icon: STAR_SLOTS[1].icon, need: b, titleKey: STAR_SLOTS[1].titleKey, descKey: STAR_SLOTS[1].descKey },
-        { id: STAR_SLOTS[2].id, icon: STAR_SLOTS[2].icon, need: max, titleKey: STAR_SLOTS[2].titleKey, descKey: STAR_SLOTS[2].descKey }
-      ];
-    })();
-    milestones.forEach(function (m) {
-      list.push({
-        id: m.id, icon: m.icon,
-        title: t(m.titleKey, { n: m.need }),
-        desc: t(m.descKey, { n: m.need }),
-        ok: function (c) { return c.totalStars >= m.need; }
-      });
-    });
-    list.push({
-      id: 'allgames', icon: '🏅', title: t('ach.allgames.title'), desc: t('ach.allgames.desc'),
-      ok: function (c) {
-        return gl.length > 0 && gl.every(function (g) { return c.stats[g.id] && c.stats[g.id].plays > 0; });
-      }
-    });
-    return list;
+    return defs();
   }
 
   global.Achievements = {

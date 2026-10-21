@@ -445,9 +445,9 @@
       }, [
         el('div', { class: 'game-card-emoji' }, locked ? '🔒' : g.emoji),
         el('div', { class: 'game-card-title' }, t(g.titleKey)),
-        el('div', { class: 'game-card-desc' }, locked ? t('runner.locked') : t(g.descKey)),
+        el('div', { class: 'game-card-desc' }, locked ? t('game.unlockAtRank', { rank: t(g.requires) }) : t(g.descKey)),
         locked ? null : (g.noStars
-          ? el('div', { class: 'game-card-record' }, '🏆 ' + t('runner.best') + ': ' + Store.best(g.id))
+          ? (g.showRecord === false ? null : el('div', { class: 'game-card-record' }, '🏆 ' + t('runner.best') + ': ' + Store.best(g.id)))
           : UI.starsRow(st.stars, 3))
       ]);
       if (!locked && st.stars >= 3) card.classList.add('mastered');
@@ -495,11 +495,12 @@
 
   App.showLocked = function (g) {
     var need = g.requires ? Achievements.rankNeed(g.requires) : 0;
+    var rankName = g.requires ? t(g.requires) : '';
     var body = el('div', { class: 'result' }, [
       el('div', { class: 'result-emoji' }, '🔒'),
       el('div', { class: 'result-title' }, t('runner.lockedTitle')),
-      el('p', { class: 'result-text' }, t('runner.locked')),
-      el('p', { class: 'result-note' }, t('runner.needRank', { got: Achievements.count(), need: need })),
+      el('p', { class: 'result-text' }, t('game.unlockAtRank', { rank: rankName })),
+      el('p', { class: 'result-note' }, t('game.needRank', { rank: rankName, got: Achievements.count(), need: need })),
       el('div', { class: 'result-actions' }, [
         el('button', {
           type: 'button', class: 'btn primary',
@@ -1118,7 +1119,7 @@
       App.showOverlay(body);
     }
 
-    var newly = Achievements.checkNew();
+    var newly = Achievements.checkNew(id, level);
     if (newly.length) App.showAchievements(newly, showResult);
     else showResult();
   };
