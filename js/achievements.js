@@ -81,7 +81,10 @@
           desc: t('ach.cup.desc', { level: lname }),
           ok: function (c) {
             var s = c.stats[g.id];
-            return !!(s && s[lv] && s[lv].plays > 0);
+            var tier = g.levels.indexOf(lv);
+            return !!(s && g.levels.some(function (playedLevel, playedTier) {
+              return playedTier >= tier && s[playedLevel] && s[playedLevel].plays > 0;
+            }));
           }
         });
       });
@@ -134,10 +137,11 @@
     var out = [];
     defs().forEach(function (d) {
       // Кубки выводятся из статистики, поэтому старые профили сразу увидят
-      // заработанное. Показываем всплывающий кубок только при первом завершении
-      // именно этой сложности, а не пачкой после обновления приложения.
-      if (d.gameId && (d.gameId !== gameId || d.level !== level ||
-          !c.stats[d.gameId] || !c.stats[d.gameId][d.level] || c.stats[d.gameId][d.level].plays !== 1)) return;
+      // заработанное. При первом завершении уровня показываем кубки этой и
+      // всех более лёгких доступных сложностей.
+      if (d.gameId && (d.gameId !== gameId ||
+          gameLevels().indexOf(d.level) > gameLevels().indexOf(level) ||
+          !c.stats[d.gameId] || !c.stats[d.gameId][level] || c.stats[d.gameId][level].plays !== 1)) return;
       if (!c.unlocked[d.id] && d.ok(c)) {
         Store.unlockAchievement(d.id);
         out.push({ id: d.id, icon: d.icon, title: d.title, desc: d.desc, unlocked: true });

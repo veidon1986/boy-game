@@ -40,11 +40,12 @@
     var current = null;
     var timer = null;
     var gen = null;
+    var suggestedLevel = null;
 
     var adaptive = new Adaptive({
       level: level,
       maxIndex: maxIndex,
-      onChange: function (nl) { level = nl; }
+      onChange: function (nl) { suggestedLevel = nl === level ? null : nl; }
     });
 
     var stage = el('div', { class: 'find-stage' });
@@ -53,7 +54,8 @@
     function newSession() {
       gen = UI.uniqueGenerator(function () { return makeRound(level); }, keyOf, 100, 'find');
       round = 0; firstTry = 0;
-      adaptive.reset();
+      suggestedLevel = null;
+      adaptive.setLevel(level);
       nextRound();
     }
 
@@ -107,7 +109,15 @@
     function finish() {
       var stars = Math.round(firstTry / TOTAL * 3);
       if (firstTry > 0 && stars < 1) stars = 1;
-      App.finishGame('find', stars, newSession, null, level);
+      var nextLevel = suggestedLevel ? {
+        level: suggestedLevel,
+        start: function () {
+          level = suggestedLevel;
+          adaptive.setLevel(level);
+          newSession();
+        }
+      } : null;
+      App.finishGame('find', stars, newSession, null, level, nextLevel);
     }
 
     newSession();

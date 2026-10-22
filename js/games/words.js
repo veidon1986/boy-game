@@ -73,13 +73,12 @@
     var current = null;
     var timer = null;
     var gen = null;
+    var suggestedLevel = null;
 
     var adaptive = new Adaptive({
       level: level,
-      onChange: function (nl, why) {
-        level = nl;
-        if (difficulty) difficulty._setActive(nl);
-        App.toast(t(why === 'up' ? 'level.up' : 'level.down', { name: t('common.' + nl) }), 1500);
+      onChange: function (nl) {
+        suggestedLevel = nl === level ? null : nl;
       }
     });
 
@@ -105,7 +104,8 @@
     function newSession() {
       gen = UI.uniqueGenerator(function () { return makeRound(level); }, keyOf, 120, 'words');
       round = 0; firstTry = 0;
-      adaptive.reset();
+      suggestedLevel = null;
+      adaptive.setLevel(level);
       nextRound();
     }
 
@@ -156,7 +156,16 @@
     function finish() {
       var stars = Math.round(firstTry / TOTAL * 3);
       if (firstTry > 0 && stars < 1) stars = 1;
-      App.finishGame('words', stars, newSession, null, level);
+      var nextLevel = suggestedLevel ? {
+        level: suggestedLevel,
+        start: function () {
+          level = suggestedLevel;
+          difficulty._setActive(level);
+          adaptive.setLevel(level);
+          newSession();
+        }
+      } : null;
+      App.finishGame('words', stars, newSession, null, level, nextLevel);
     }
 
     newSession();

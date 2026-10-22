@@ -58,6 +58,15 @@
       var mistakes = 0;
       var tray = el('div', { class: 'story-tray' });
       var answer = el('div', { class: 'story-answer' });
+      var slots = [];
+      correctOrder.forEach(function (_, index) {
+        var slot = el('span', {
+          class: 'story-slot',
+          'aria-label': t('game.story.position', { n: index + 1 })
+        }, '·');
+        slots.push(slot);
+        answer.appendChild(slot);
+      });
       stage.appendChild(tray);
       stage.appendChild(el('div', { class: 'story-arrow' }, '👇'));
       stage.appendChild(answer);
@@ -68,8 +77,15 @@
             if (button.disabled) return;
             button.disabled = true;
             selected.push(item);
-            answer.appendChild(el('span', { class: 'story-picked' }, item));
-            if (item !== correctOrder[selected.length - 1]) mistakes++;
+            var slot = slots[selected.length - 1];
+            slot.textContent = item;
+            slot.classList.add('filled');
+            if (item !== correctOrder[selected.length - 1]) {
+              mistakes++;
+              slot.classList.add('wrong');
+            } else {
+              slot.classList.add('correct');
+            }
             Sound.play('tap');
             if (selected.length === correctOrder.length) {
               if (!mistakes) firstTry++;

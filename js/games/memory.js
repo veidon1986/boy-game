@@ -156,14 +156,16 @@
       if (mistakes <= upAllowance) target = Adaptive.up(level, maxIndex);
       else if (mistakes >= cfg.pairs) target = Adaptive.down(level);
 
-      var note = null;
-      if (target !== level) {
-        level = target;
-        difficulty._setActive(level);
-        note = t('level.next', { name: t('common.' + level) });
-      }
+      var nextLevel = target !== level ? {
+        level: target,
+        start: function () {
+          level = target;
+          difficulty._setActive(level);
+          build();
+        }
+      } : null;
 
-      App.finishGame('memory', stars, build, note, playedLevel);
+      App.finishGame('memory', stars, build, null, playedLevel, nextLevel);
     }
 
     build();

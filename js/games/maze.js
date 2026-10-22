@@ -107,6 +107,9 @@
           cell.textContent = cell._r === at.r && cell._c === at.c ? '🐻' :
             (cell._r === route.goal.r && cell._c === route.goal.c ? '🏠' : '');
           cell.classList.toggle('robot-wall', !route.cells[key]);
+          cell.classList.toggle('robot-current', cell._r === at.r && cell._c === at.c);
+          cell.classList.toggle('robot-goal', cell._r === route.goal.r && cell._c === route.goal.c);
+          cell.classList.toggle('robot-path', !!route.cells[key]);
           cell.classList.toggle('maze-cell', true);
           cell.classList.toggle('robot-bump', !!bump && cell._r === bump.r && cell._c === bump.c);
         });

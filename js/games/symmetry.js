@@ -58,6 +58,7 @@
       var targetCol = task.targetCol;
       var answer = task.answer;
       var done = false;
+      var boardWrap = el('div', { class: 'symmetry-wrap' });
       var board = el('div', { class: 'symmetry-board' });
       board.style.gridTemplateColumns = 'repeat(' + size + ', minmax(48px, 76px))';
       for (var rr = 0; rr < size; rr++) {
@@ -67,7 +68,8 @@
             hidden ? '?' : matrix[rr][cc]));
         }
       }
-      stage.appendChild(board);
+      boardWrap.appendChild(board);
+      stage.appendChild(boardWrap);
       var options = task.options;
       var choices = el('div', { class: 'symmetry-options' });
       options.forEach(function (item) {

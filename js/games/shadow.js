@@ -100,6 +100,10 @@
       return { value: lv, label: t('common.' + lv) };
     }), level, function (v) { level = v; newSession(); });
     root.appendChild(el('p', { class: 'game-hint' }, t('game.shadow.hint')));
+    root.appendChild(el('div', { class: 'shadow-method' }, [
+      el('span', { class: 'shadow-method-icon', 'aria-hidden': 'true' }, '👀'),
+      el('span', {}, t('game.shadow.method'))
+    ]));
     root.appendChild(difficulty);
     root.appendChild(stats);
     root.appendChild(stage);
@@ -137,12 +141,13 @@
       var targetCard = el('div', { class: 'shadow-target', role: 'img', 'aria-label': t('game.shadow.target') });
       targetCard.appendChild(makeShape(target, false));
       stage.appendChild(targetCard);
+      stage.appendChild(el('div', { class: 'shadow-target-label' }, t('game.shadow.target')));
       var grid = el('div', { class: 'shadow-grid' });
       var mistakes = 0;
-      options.forEach(function (shape) {
+      options.forEach(function (shape, index) {
         var button = el('button', {
           type: 'button', class: 'shadow-option',
-          'aria-label': t('game.shadow.choice'),
+          'aria-label': t('game.shadow.choice') + ' ' + (index + 1),
           onclick: function () {
             if (answered) return;
             if (shape.name === target.name) {
@@ -164,6 +169,19 @@
         grid.appendChild(button);
       });
       stage.appendChild(grid);
+      var clue = el('p', { class: 'shadow-clue hidden', 'aria-live': 'polite' });
+      var clueButton = el('button', {
+        type: 'button', class: 'btn shadow-hint-button',
+        'aria-expanded': 'false',
+        onclick: function () {
+          var open = clue.classList.contains('hidden');
+          clue.textContent = open ? t('game.shadow.clue.' + target.name) : '';
+          clue.classList.toggle('hidden', !open);
+          clueButton.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+      }, '💡 ' + t('game.shadow.showHint'));
+      stage.appendChild(clueButton);
+      stage.appendChild(clue);
     }
     newSession();
     return function cleanup() { if (timer) clearTimeout(timer); };

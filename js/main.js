@@ -56,6 +56,23 @@
   function boot() {
     App.releaseNoticeVersion = RELEASE_NOTICE_VERSION;
     App.init();
+    var splash = document.getElementById('startupSplash');
+    if (splash) {
+      splash.querySelector('[data-splash-title]').textContent = t('splash.title');
+      splash.querySelector('[data-splash-subtitle]').textContent = t('splash.subtitle');
+      document.getElementById('skipSplashBtn').textContent = t('splash.skip');
+      var dismissed = false;
+      var timer;
+      function dismissSplash() {
+        if (dismissed) return;
+        dismissed = true;
+        clearTimeout(timer);
+        splash.classList.add('is-leaving');
+        setTimeout(function () { splash.remove(); }, 500);
+      }
+      document.getElementById('skipSplashBtn').addEventListener('click', dismissSplash);
+      timer = setTimeout(dismissSplash, 2200);
+    }
     if (!App.demoMode) notifyReleaseIfNeeded();
     setupServiceWorker();
   }

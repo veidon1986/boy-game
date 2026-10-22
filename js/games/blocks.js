@@ -275,11 +275,12 @@
     }
 
     function repeatButton(icon, className, action, label) {
-      var pointerStarted = false;
+      var pointerHeld = false;
       var btn = el('button', { type: 'button', class: className, 'aria-label': label }, icon);
       btn.addEventListener('pointerdown', function (event) {
+        if (pointerHeld || event.button !== 0 || event.isPrimary === false) return;
         event.preventDefault();
-        pointerStarted = true;
+        pointerHeld = true;
         stopHold();
         action();
         if (btn.setPointerCapture) btn.setPointerCapture(event.pointerId);
@@ -290,15 +291,15 @@
       });
       btn.addEventListener('pointerup', function () {
         stopHold();
-        setTimeout(function () { pointerStarted = false; }, 0);
+        pointerHeld = false;
       });
-      btn.addEventListener('pointercancel', function () { stopHold(); pointerStarted = false; });
-      btn.addEventListener('lostpointercapture', stopHold);
+      btn.addEventListener('pointercancel', function () { stopHold(); pointerHeld = false; });
+      btn.addEventListener('lostpointercapture', function () { stopHold(); pointerHeld = false; });
       btn.addEventListener('click', function (event) {
-        if (pointerStarted) {
-          pointerStarted = false;
-          event.preventDefault();
-        } else action();
+        event.preventDefault();
+        // pointerdown уже выполнил ход; мобильный браузер затем присылает click.
+        // detail === 0 оставляет управление клавиатурой и скринридерам.
+        if (event.detail === 0 && !pointerHeld) action();
       });
       return btn;
     }

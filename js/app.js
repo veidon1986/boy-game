@@ -373,16 +373,27 @@
       el('span', { class: 'profile-edit' }, '✏️')
     ]);
 
-    var list = Achievements.all();
-    var badges = el('button', {
-      type: 'button', class: 'profile-badges',
+    var rewards = Achievements.all();
+    var rewardCount = Achievements.count();
+    var rewardTotal = Achievements.total();
+    var nextReward = rewards.filter(function (reward) { return !reward.unlocked; })[0];
+    var rewardPercent = rewardTotal ? Math.round(rewardCount / rewardTotal * 100) : 100;
+    var rewardSummary = el('button', {
+      type: 'button', class: 'profile-reward-summary',
+      'aria-label': t('home.achievements') + ': ' + rewardCount + ' / ' + rewardTotal,
       onclick: function () { Sound.play('tap'); App.openAchievements(); }
-    }, list.map(function (a) {
-      return el('span', {
-        class: 'badge' + (a.unlocked ? ' got' : ' locked'),
-        title: a.title
-      }, a.icon);
-    }));
+    }, [
+      el('span', { class: 'profile-reward-icon' }, nextReward ? nextReward.icon : '🏅'),
+      el('span', { class: 'profile-reward-copy' }, [
+        el('span', { class: 'profile-reward-title' }, t('home.achievements')),
+        el('span', { class: 'profile-reward-count' }, rewardCount + ' / ' + rewardTotal),
+        el('span', { class: 'profile-reward-next' }, nextReward
+          ? t('home.nextReward', { title: nextReward.title })
+          : t('home.allRewards'))
+      ]),
+      el('span', { class: 'profile-reward-track', 'aria-hidden': 'true' },
+        el('span', { style: { width: rewardPercent + '%' } }))
+    ]);
 
     var kidsBtn = el('button', {
       type: 'button', class: 'profile-kids',
@@ -391,9 +402,7 @@
 
     return el('div', { class: 'profile-card' }, [
       main,
-      el('div', { class: 'profile-badges-label' },
-        t('home.achievements') + ' · ' + Achievements.count() + ' / ' + Achievements.total()),
-      badges,
+      rewardSummary,
       kidsBtn
     ]);
   }
@@ -421,8 +430,7 @@
     wrap.appendChild(profileCard());
 
     var badgeItems = [
-      el('div', { class: 'home-badge' }, [el('span', { class: 'home-badge-icon' }, '⭐'), ' ' + Store.totalStars() + ' / ' + (scoringGames() * 3)]),
-      el('div', { class: 'home-badge' }, [el('span', { class: 'home-badge-icon' }, '🏆'), ' ' + Achievements.count() + ' / ' + Achievements.total()])
+      el('div', { class: 'home-badge' }, [el('span', { class: 'home-badge-icon' }, '⭐'), ' ' + Store.totalStars() + ' / ' + (scoringGames() * 3)])
     ];
     App.els.timeChip = null;
     App.els.timeChipText = null;
@@ -1095,7 +1103,7 @@
   /* ---------- Завершение игры ---------- */
 
   // stars: 1..3, replay: перезапуск, note: подпись, level: сложность для статистики
-  App.finishGame = function (id, stars, replay, note, level) {
+  App.finishGame = function (id, stars, replay, note, level, nextLevel) {
     stars = Math.max(1, Math.min(3, stars));
     Store.recordResult(id, stars, level);
     Sound.play('win');
@@ -1104,26 +1112,38 @@
     var praise = stars >= 3 ? t('common.great') : (stars === 2 ? t('common.wellDone') : t('common.keepGoing'));
 
     function showResult() {
+      var actions = [
+        el('button', {
+          type: 'button', class: 'btn primary',
+          onclick: function () {
+            App.hideOverlay();
+            if (!App.canPlay()) { App.showBlocked(); return; }
+            if (replay) replay();
+          }
+        }, '🔁 ' + t('common.again'))
+      ];
+      if (nextLevel && nextLevel.level && typeof nextLevel.start === 'function') {
+        actions.push(el('button', {
+          type: 'button', class: 'btn primary next-level-btn',
+          onclick: function () {
+            App.hideOverlay();
+            if (!App.canPlay()) { App.showBlocked(); return; }
+            nextLevel.start();
+          }
+        }, '➡️ ' + t('level.try', { name: t('common.' + nextLevel.level) })));
+      }
+      actions.push(el('button', {
+        type: 'button', class: 'btn',
+        onclick: function () { App.hideOverlay(); App.goHome(); }
+      }, '🏠 ' + t('home')));
+
       var body = el('div', { class: 'result' }, [
         el('div', { class: 'result-emoji' }, emoji),
         el('div', { class: 'result-title' }, praise),
         UI.starsRow(stars, 3),
         el('p', { class: 'result-text' }, t('common.result.stars', { n: stars })),
         note ? el('p', { class: 'result-note' }, note) : null,
-        el('div', { class: 'result-actions' }, [
-          el('button', {
-            type: 'button', class: 'btn primary',
-            onclick: function () {
-              App.hideOverlay();
-              if (!App.canPlay()) { App.showBlocked(); return; }
-              if (replay) replay();
-            }
-          }, '🔁 ' + t('common.again')),
-          el('button', {
-            type: 'button', class: 'btn',
-            onclick: function () { App.hideOverlay(); App.goHome(); }
-          }, '🏠 ' + t('home'))
-        ])
+        el('div', { class: 'result-actions' + (nextLevel ? ' has-next-level' : '') }, actions)
       ]);
       App.showOverlay(body);
     }
