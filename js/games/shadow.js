@@ -96,7 +96,7 @@
     var targetGenerator = null;
     var stage = el('div', { class: 'shadow-stage' });
     var stats = el('div', { class: 'game-stats' });
-    var difficulty = UI.segmented(Ages.levels(age).map(function (lv) {
+    var difficulty = UI.segmented(App.gameLevels('shadow').map(function (lv) {
       return { value: lv, label: t('common.' + lv) };
     }), level, function (v) { level = v; newSession(); });
     root.appendChild(el('p', { class: 'game-hint' }, t('game.shadow.hint')));
@@ -134,7 +134,7 @@
       stats.textContent = t('common.round') + ' ' + round + ' ' + t('common.of') + ' ' + TOTAL;
       UI.clear(stage);
       var task = targetGenerator();
-      if (!task) { UI.showTaskPoolExhausted(root, App); return; }
+      if (!task) { UI.showTaskPoolExhausted(root, App, targetGenerator); return; }
       var target = task.target;
       var options = task.options;
       var answered = false;
@@ -187,8 +187,5 @@
     return function cleanup() { if (timer) clearTimeout(timer); };
   }
 
-  App.register({
-    id: 'shadow', ages: ['preschool'], emoji: '🌘',
-    titleKey: 'game.shadow', descKey: 'game.shadow.desc', start: start
-  });
+  App.register('shadow', start);
 })(window);

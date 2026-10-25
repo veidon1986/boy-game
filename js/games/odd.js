@@ -91,7 +91,7 @@
 
     root.appendChild(el('p', { class: 'game-hint' }, t('game.odd.hint')));
 
-    var difficulty = UI.segmented(Ages.levels(age).map(function (lv) {
+    var difficulty = UI.segmented(App.gameLevels('odd').map(function (lv) {
       return { value: lv, label: t('common.' + lv) };
     }), level, function (v) {
       level = v;
@@ -121,10 +121,8 @@
       if (round >= TOTAL) { finish(); return; }
       round++;
       progress.textContent = t('common.round') + ' ' + round + ' ' + t('common.of') + ' ' + TOTAL;
-      var data = gen();
-      if (!data) { UI.showTaskPoolExhausted(root, App); return; }
-      var tries = 0;
-      while (data.tag === lastTag && tries < 6) { data = gen(); if (!data) { UI.showTaskPoolExhausted(root, App); return; } tries++; }
+      var data = gen(function (candidate) { return candidate.tag !== lastTag; });
+      if (!data) { UI.showTaskPoolExhausted(root, App, gen); return; }
       lastTag = data.tag;
       render(data);
     }
@@ -183,12 +181,5 @@
     return function cleanup() { if (timer) clearTimeout(timer); };
   }
 
-  App.register({
-    id: 'odd',
-    ages: ['preschool', 'junior', 'school'],
-    emoji: '🔍',
-    titleKey: 'game.odd',
-    descKey: 'game.odd.desc',
-    start: start
-  });
+  App.register('odd', start);
 })(window);

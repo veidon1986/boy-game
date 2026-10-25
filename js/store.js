@@ -10,6 +10,16 @@
   var PREFIX = 'boygame.';
   var LEVELS = ['easy', 'medium', 'hard'];
   var readOnly = false;
+  var lastStorageError = null;
+  var SCHEMA_VERSION = 1;
+  var historyStore = TaskHistory.create({ fallback: function (id, history) {
+    if (!readOnly) writeRaw(id ? dataKey(id, 'taskHistory') : 'taskHistory', JSON.stringify(history));
+  } });
+  var usageStore = UsageStore.create({
+    read: function (id) { return get(id ? dataKey(id, 'usage') : 'usage', null); },
+    write: function (id, value) { return writeRaw(id ? dataKey(id, 'usage') : 'usage', JSON.stringify(value)); },
+    readOnly: function () { return readOnly; }
+  });
 
   function raw(key) {
     try { return global.localStorage.getItem(PREFIX + key); }
@@ -26,7 +36,7 @@
   function set(key, value) {
     if (readOnly) return value;
     try { global.localStorage.setItem(PREFIX + key, JSON.stringify(value)); }
-    catch (e) { /* приватный режим — просто не сохраняем */ }
+    catch (e) { persistenceFailed(e); }
     return value;
   }
 
@@ -41,7 +51,27 @@
     try {
       global.localStorage.setItem(PREFIX + key, value);
       return global.localStorage.getItem(PREFIX + key) === value;
-    } catch (e) { return false; }
+    } catch (e) { persistenceFailed(e); return false; }
+  }
+
+  function persistenceFailed(error) {
+    lastStorageError = error;
+    if (global.App && App.els.toast) App.toast(t('storage.writeFailed'), 6000);
+  }
+
+  function forgetHistory(id) {
+    if (readOnly) return Promise.resolve(false);
+    var resets = get('historyResets', {});
+    resets[id] = true;
+    set('historyResets', resets);
+    return historyStore.forget(id).then(function (success) {
+      if (success) {
+        var pending = get('historyResets', {});
+        delete pending[id];
+        set('historyResets', pending);
+      }
+      return success;
+    });
   }
 
   /* ---------- Профили (дети) ---------- */
@@ -134,6 +164,7 @@
   }
 
   function addProfile(name, avatar, age) {
+    usageStore.flush();
     var r = registry();
     var id = newId();
     r.list.push({ id: id, name: name, avatar: avatar, age: age || 'junior', createdAt: Date.now() });
@@ -150,12 +181,14 @@
   }
 
   function switchProfile(id) {
+    usageStore.flush();
     var r = registry();
     if (findById(r, id)) { r.activeId = id; saveRegistry(r); }
     return profile();
   }
 
   function removeProfile(id) {
+    if (!readOnly) { usageStore.discard(id); forgetHistory(id); }
     var r = registry();
     r.list = r.list.filter(function (p) { return p.id !== id; });
     ['stats', 'achievements', 'best', 'usage', 'limitMinutes', 'brainLevel', 'taskHistory', 'chessRating'].forEach(function (k) {
@@ -258,11 +291,16 @@
   function setBrainLevel(n) { return set(dKey('brainLevel'), n); }
 
   function taskHistory(gameId) {
+    var id = activeId() || '';
+    if (historyStore.ready(id)) return historyStore.list(id, gameId);
     var all = get(dKey('taskHistory'), {});
     return Array.isArray(all[gameId]) ? all[gameId] : [];
   }
 
   function rememberTask(gameId, signature, limit) {
+    if (readOnly) return true;
+    var id = activeId() || '';
+    if (historyStore.ready(id)) return historyStore.remember(id, gameId, signature);
     var all = get(dKey('taskHistory'), {});
     var history = Array.isArray(all[gameId]) ? all[gameId] : [];
     if (history.indexOf(signature) >= 0) return false;
@@ -270,6 +308,32 @@
     all[gameId] = history;
     set(dKey('taskHistory'), all);
     return true;
+  }
+
+  function prepareHistory() {
+    if (readOnly || !global.indexedDB) return Promise.resolve(false);
+    var id = activeId() || '';
+    var reset = get('historyResets', {})[id] ? forgetHistory(id) : Promise.resolve();
+    return reset.then(function () {
+      return historyStore.prepare(id, get(id ? dataKey(id, 'taskHistory') : 'taskHistory', {}));
+    }).then(function (ready) {
+      if (historyStore.error() && historyStore.error().message === 'history-schema-too-new') throw historyStore.error();
+      return ready;
+    });
+  }
+
+  function ready() {
+    if (readOnly) return Promise.resolve();
+    var version = get('schemaVersion', 0);
+    if (version > SCHEMA_VERSION) return Promise.reject(new Error('storage-schema-too-new'));
+    return Promise.all(Object.keys(get('historyResets', {})).map(forgetHistory)).then(prepareHistory).then(function () {
+      if (version < SCHEMA_VERSION) writeRaw('schemaVersion', JSON.stringify(SCHEMA_VERSION));
+    });
+  }
+
+  function flush() {
+    usageStore.flush();
+    return historyStore.flush();
   }
 
   function chessRating() {
@@ -282,8 +346,7 @@
   /* ---------- Дневной лимит времени ---------- */
 
   function todayKey() {
-    var d = new Date();
-    return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+    return usageStore.today();
   }
 
   function limitMinutes() {
@@ -294,22 +357,14 @@
   function setLimitMinutes(m) { return set(dKey('limitMinutes'), m); }
 
   function usage() {
-    var u = get(dKey('usage'), null);
-    if (!u || u.day !== todayKey()) {
-      u = { day: todayKey(), seconds: 0 };
-      set(dKey('usage'), u);
-    }
-    return u;
+    return usageStore.read(activeId() || '');
   }
 
   function addUsage(seconds) {
-    var u = usage();
-    u.seconds += seconds;
-    set(dKey('usage'), u);
-    return u;
+    return usageStore.add(activeId() || '', seconds);
   }
 
-  function resetUsage() { return set(dKey('usage'), { day: todayKey(), seconds: 0 }); }
+  function resetUsage() { return usageStore.reset(activeId() || ''); }
 
   function remainingSeconds() {
     var lim = limitMinutes();
@@ -321,20 +376,11 @@
 
   function allStatsFor(id) { return get(dataKey(id, 'stats'), {}); }
   function achievementsFor(id) { return get(dataKey(id, 'achievements'), {}); }
-  function totalStarsFor(id) {
-    var all = allStatsFor(id);
-    var sum = 0;
-    for (var k in all) { if (Object.prototype.hasOwnProperty.call(all, k)) sum += (all[k].stars || 0); }
-    return sum;
-  }
-  function limitMinutesFor(id) { return get(dataKey(id, 'limitMinutes'), 0); }
+  function limitMinutesFor(id) { return limitFor(id); }
   function remainingSecondsFor(id) {
     if (limitMinutesFor(id) <= 0) return Infinity;
-    var today = todayKey();
-    var used = get(dataKey(id, 'usage.' + today), 0);
-    return Math.max(0, limitMinutesFor(id) * 60 - used);
+    return Math.max(0, limitMinutesFor(id) * 60 - usageFor(id).seconds);
   }
-  function achievementsFor(id) { return get(dataKey(id, 'achievements'), {}); }
   function bestFor(id, game) { return (get(dataKey(id, 'best'), {})[game]) || 0; }
   function limitFor(id) {
     var v = get(dataKey(id, 'limitMinutes'), 20);
@@ -350,22 +396,23 @@
     return sum;
   }
   function usageFor(id) {
-    var u = get(dataKey(id, 'usage'), null);
-    if (!u || u.day !== todayKey()) {
-      u = { day: todayKey(), seconds: 0 };
-      set(dataKey(id, 'usage'), u);
-    }
-    return u;
+    return usageStore.read(id);
   }
-  function resetUsageFor(id) { return set(dataKey(id, 'usage'), { day: todayKey(), seconds: 0 }); }
+  function resetUsageFor(id) { return usageStore.reset(id); }
 
   function reset() {
+    if (!readOnly) { usageStore.discard(activeId() || ''); forgetHistory(activeId() || ''); }
     ['stats', 'achievements', 'best', 'usage', 'limitMinutes', 'brainLevel', 'taskHistory', 'chessRating'].forEach(function (k) {
       remove(dKey(k));
     });
   }
 
   global.Store = {
+    schemaVersion: SCHEMA_VERSION,
+    ready: ready,
+    prepareHistory: prepareHistory,
+    flush: flush,
+    storageError: function () { return lastStorageError; },
     get: get,
     set: set,
     setReadOnly: function (enabled) { readOnly = !!enabled; },

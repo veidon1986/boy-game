@@ -235,12 +235,5 @@
     };
   }
 
-  App.register({
-    id: 'brain',
-    ages: ['preschool', 'junior', 'school'],
-    emoji: '🧠',
-    titleKey: 'game.brain',
-    descKey: 'game.brain.desc',
-    start: start
-  });
+  App.register('brain', start);
 })(window);

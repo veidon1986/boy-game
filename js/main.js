@@ -49,6 +49,7 @@
     navigator.serviceWorker.addEventListener('controllerchange', function () {
       if (reloading) return;
       reloading = true;
+      App.checkpointTime();
       location.reload();
     });
   }
@@ -56,6 +57,7 @@
   function boot() {
     App.releaseNoticeVersion = RELEASE_NOTICE_VERSION;
     App.init();
+    if (Store.storageError()) App.toast(t('storage.writeFailed'), 6000);
     var splash = document.getElementById('startupSplash');
     if (splash) {
       splash.querySelector('[data-splash-title]').textContent = t('splash.title');
@@ -77,9 +79,19 @@
     setupServiceWorker();
   }
 
+  function prepareBoot() {
+    Store.ready().then(boot).catch(function (error) {
+      console.error('Storage initialization failed', error);
+      var subtitle = document.querySelector('[data-splash-subtitle]');
+      if (subtitle) subtitle.textContent = t('storage.upgradeRequired');
+      var skip = document.getElementById('skipSplashBtn');
+      if (skip) skip.hidden = true;
+    });
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot);
+    document.addEventListener('DOMContentLoaded', prepareBoot);
   } else {
-    boot();
+    prepareBoot();
   }
 })(window);

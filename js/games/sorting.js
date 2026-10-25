@@ -57,6 +57,21 @@
     var placed = 0;
     var mistakes = 0;
     var total = 0;
+    var stopped = false;
+    var timers = [];
+
+    function cancelTimers() {
+      timers.forEach(function (timer) { clearTimeout(timer); });
+      timers = [];
+    }
+
+    function later(callback, delay) {
+      var timer = setTimeout(function () {
+        timers = timers.filter(function (value) { return value !== timer; });
+        if (!stopped) callback();
+      }, delay);
+      timers.push(timer);
+    }
     var taskGenerator = UI.uniqueGenerator(function () {
       var cfg = configFor(age, level);
       var catIds = chooseCategories(cfg.cats, age);
@@ -68,7 +83,7 @@
 
     root.appendChild(el('p', { class: 'game-hint' }, t('game.sorting.hint')));
 
-    var difficulty = UI.segmented(Ages.levels(age).map(function (lv) {
+    var difficulty = UI.segmented(App.gameLevels('sorting').map(function (lv) {
       return { value: lv, label: t('common.' + lv) };
     }), level, function (v) { level = v; build(); });
 
@@ -80,13 +95,14 @@
     root.appendChild(stage);
 
     function build() {
+      cancelTimers();
       selected = null; placed = 0; mistakes = 0;
       UI.clear(stage);
 
       var cfg = configFor(age, level);
 
       var groups = taskGenerator();
-      if (!groups) { UI.showTaskPoolExhausted(root, App); return; }
+      if (!groups) { UI.showTaskPoolExhausted(root, App, taskGenerator); return; }
       var catIds = groups.map(function (group) { return group.id; });
       var per = Math.floor(cfg.total / cfg.cats);
       total = per * cfg.cats;
@@ -155,7 +171,7 @@
     function drop(catId, bin) {
       if (!selected) {
         bin.classList.add('nudge');
-        setTimeout(function () { bin.classList.remove('nudge'); }, 400);
+        later(function () { bin.classList.remove('nudge'); }, 400);
         return;
       }
       if (selected._cat === catId) {
@@ -168,7 +184,7 @@
         placed++;
         updateStats();
         if (placed === total) {
-          setTimeout(finish, 500);
+          later(finish, 500);
         }
       } else {
         Sound.play('wrong');
@@ -176,7 +192,7 @@
         bin.classList.add('shake');
         selected.classList.add('shake');
         var sel = selected;
-        setTimeout(function () {
+        later(function () {
           bin.classList.remove('shake');
           if (sel) sel.classList.remove('shake');
         }, 500);
@@ -205,15 +221,8 @@
     }
 
     build();
-    return null;
+    return function cleanup() { stopped = true; cancelTimers(); };
   }
 
-  App.register({
-    id: 'sorting',
-    ages: ['preschool', 'junior', 'school'],
-    emoji: '🧩',
-    titleKey: 'game.sorting',
-    descKey: 'game.sorting.desc',
-    start: start
-  });
+  App.register('sorting', start);
 })(window);

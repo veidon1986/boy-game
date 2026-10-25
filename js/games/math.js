@@ -188,7 +188,7 @@
 
     root.appendChild(el('p', { class: 'game-hint' }, t('game.math.hint')));
 
-    var difficulty = UI.segmented(Ages.levels(age).map(function (lv) {
+    var difficulty = UI.segmented(App.gameLevels('math').map(function (lv) {
       return { value: lv, label: t('common.' + lv) };
     }), level, function (v) {
       level = v;
@@ -214,10 +214,8 @@
     }
 
     function nextQuestion() {
-      var q = gen();
+      var q = gen(function (candidate) { return candidate.visual.kind !== lastKind; });
       if (!q) return null;
-      var tries = 0;
-      while (q.visual.kind === lastKind && tries < 6) { q = gen(); if (!q) return null; tries++; }
       lastKind = q.visual.kind;
       return q;
     }
@@ -228,7 +226,7 @@
       round++;
       progress.textContent = t('common.round') + ' ' + round + ' ' + t('common.of') + ' ' + TOTAL;
       var question = nextQuestion();
-      if (!question) { UI.showTaskPoolExhausted(root, App); return; }
+      if (!question) { UI.showTaskPoolExhausted(root, App, gen); return; }
       render(question);
     }
 
@@ -287,12 +285,5 @@
     return function cleanup() { if (timer) clearTimeout(timer); };
   }
 
-  App.register({
-    id: 'math',
-    ages: ['preschool', 'junior', 'school'],
-    emoji: '➕',
-    titleKey: 'game.math',
-    descKey: 'game.math.desc',
-    start: start
-  });
+  App.register('math', start);
 })(window);

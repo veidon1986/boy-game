@@ -50,7 +50,7 @@
 
     root.appendChild(el('p', { class: 'game-hint' }, t('game.memory.hint')));
 
-    var difficulty = UI.segmented(Ages.levels(age).map(function (lv) {
+    var difficulty = UI.segmented(App.gameLevels('memory').map(function (lv) {
       return { value: lv, label: t('common.' + lv) };
     }), level, function (v) { level = v; build(); });
 
@@ -79,7 +79,7 @@
 
       // Наборы не повторяются в текущем профиле, пока доступен новый вариант.
       var chosen = setGenerator();
-      if (!chosen) { UI.showTaskPoolExhausted(root, App); return; }
+      if (!chosen) { UI.showTaskPoolExhausted(root, App, setGenerator); return; }
 
       var deck = [];
       chosen.forEach(function (e, i) {
@@ -122,7 +122,7 @@
         first = null;
         updateStats();
         if (matched === configFor(age, level).pairs) {
-          setTimeout(finish, 650);
+          timer = setTimeout(finish, 650);
         }
       } else {
         var a = first, b = card;
@@ -173,12 +173,5 @@
     return function cleanup() { if (timer) clearTimeout(timer); };
   }
 
-  App.register({
-    id: 'memory',
-    ages: ['preschool', 'junior', 'school'],
-    emoji: '🧠',
-    titleKey: 'game.memory',
-    descKey: 'game.memory.desc',
-    start: start
-  });
+  App.register('memory', start);
 })(window);

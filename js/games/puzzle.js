@@ -25,10 +25,13 @@
     var sceneGenerator = UI.uniqueGenerator(function () {
       var count = level === 'easy' ? 2 : (level === 'medium' ? 3 : 4);
       return UI.pick(SCENES).slice(0, count);
-    }, function (scene) { return scene.slice().sort().join(','); }, 100, 'puzzle');
+    }, function (scene) { return scene.slice().sort().join(','); }, 100, 'puzzle', function () {
+      var count = level === 'easy' ? 2 : (level === 'medium' ? 3 : 4);
+      return SCENES.map(function (scene) { return scene.slice(0, count); });
+    });
     var stage = el('div', { class: 'puzzle-stage' });
     var stats = el('div', { class: 'game-stats' });
-    var difficulty = UI.segmented(Ages.levels(age).map(function (lv) {
+    var difficulty = UI.segmented(App.gameLevels('puzzle').map(function (lv) {
       return { value: lv, label: t('common.' + lv) };
     }), level, function (v) { level = v; newSession(); });
 
@@ -54,7 +57,7 @@
       UI.clear(stage);
       var count = level === 'easy' ? 2 : (level === 'medium' ? 3 : 4);
       var scene = sceneGenerator();
-      if (!scene) { UI.showTaskPoolExhausted(root, App); return; }
+      if (!scene) { UI.showTaskPoolExhausted(root, App, sceneGenerator); return; }
       var image = UI.shuffle(scene);
       var selected = null;
       var placed = [];
@@ -123,8 +126,5 @@
     return function cleanup() { if (timer) clearTimeout(timer); };
   }
 
-  App.register({
-    id: 'puzzle', ages: ['toddler', 'preschool', 'junior'], emoji: '🧩',
-    titleKey: 'game.puzzle', descKey: 'game.puzzle.desc', start: start
-  });
+  App.register('puzzle', start);
 })(window);

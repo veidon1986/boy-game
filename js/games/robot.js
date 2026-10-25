@@ -82,7 +82,7 @@
     }, function (route) { return route.goal.r + ',' + route.goal.c + '|' + route.steps.join(','); }, 180, 'robot');
     var stats = el('div', { class: 'game-stats' });
     var stage = el('div', { class: 'robot-stage' });
-    var difficulty = UI.segmented(Ages.levels(age).map(function (lv) {
+    var difficulty = UI.segmented(App.gameLevels('robot').map(function (lv) {
       return { value: lv, label: t('common.' + lv) };
     }), level, function (v) { level = v; newSession(); });
     root.appendChild(el('p', { class: 'game-hint' }, t('game.robot.hint')));
@@ -95,7 +95,7 @@
       routeQueue = [];
       for (var i = 0; i < TOTAL; i++) {
         var route = routeGenerator();
-        if (!route) { UI.showTaskPoolExhausted(root, App); return; }
+        if (!route) { UI.showTaskPoolExhausted(root, App, routeGenerator); return; }
         routeQueue.push(route);
       }
       round = 0; firstTry = 0; render();
@@ -249,8 +249,5 @@
     return function cleanup() { if (timer) clearTimeout(timer); };
   }
 
-  App.register({
-    id: 'robot', ages: ['school'], emoji: '🤖',
-    titleKey: 'game.robot', descKey: 'game.robot.desc', start: start
-  });
+  App.register('robot', start);
 })(window);

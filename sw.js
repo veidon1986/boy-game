@@ -1,12 +1,24 @@
-/* sw.js — офлайн-кэш приложения (service worker). */
-const CACHE = 'boygame-v70';
+/* sw.js — согласованные версии оболочки, ленивых модулей и офлайн-кэша. */
+const CACHE = 'boygame-v76';
+const BUILD = 'fbf6d51bd9f510f4';
 const ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
+  './icons/favicon-32.png',
+  './icons/apple-touch-icon.png',
   './css/styles.css',
+  './css/games/learning.css',
+  './css/app-ui.css',
+  './css/games/arcade.css',
+  './css/games/board.css',
+  './css/animations.css',
+  './css/theme.css',
+  './js/release.js',
   './js/i18n.js',
   './js/ages.js',
+  './js/task-history.js',
+  './js/usage-store.js',
   './js/store.js',
   './js/analytics-config.js',
   './js/analytics.js',
@@ -14,8 +26,23 @@ const ASSETS = [
   './js/ui.js',
   './js/adaptive.js',
   './js/achievements.js',
+  './js/game-catalog.js',
+  './js/game-session.js',
+  './js/game-loader.js',
+  './js/play-time.js',
   './js/app.js',
+  './js/app/profiles.js',
+  './js/app/home.js',
+  './js/app/parents.js',
+  './js/app/privacy.js',
+  './js/app/admin.js',
+  './js/app/rewards.js',
+  './js/app/dialogs.js',
+  './js/app/play-time.js',
   './js/main.js',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './icons/icon-maskable-512.png',
   './js/games/memory.js',
   './js/games/sequence.js',
   './js/games/sorting.js',
@@ -33,59 +60,62 @@ const ASSETS = [
   './js/games/words.js',
   './js/games/runner.js',
   './js/games/blocks.js',
+  './js/engines/checkers.js',
   './js/games/checkers.js',
-  './js/games/chess.js',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './icons/icon-maskable-512.png',
-  './icons/apple-touch-icon.png',
-  './icons/favicon-32.png'
+  './js/engines/chess.js',
+  './js/games/chess.js'
 ];
+const CACHE_NAME = CACHE + '-' + BUILD;
+const SCOPE = self.registration.scope;
+const PATHS = new Set(ASSETS.map(asset => new URL(asset, SCOPE).pathname));
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(ASSETS))
-  );
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE_NAME).then(cache =>
+    cache.addAll(ASSETS.map(asset => new Request(new URL(asset, SCOPE).href, { cache: 'reload' })))
+  ));
 });
 
-self.addEventListener('message', (event) => {
+self.addEventListener('message', event => {
   if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-    ).then(() => self.clients.claim())
-  );
+self.addEventListener('activate', event => {
+  event.waitUntil(caches.keys().then(keys => {
+    const old = keys.filter(key => /^boygame-v\d+(?:-|$)/.test(key) && key !== CACHE_NAME);
+    // Предыдущая сборка нужна вкладкам, которые ещё завершают переход на новую.
+    const previous = old[old.length - 1];
+    return Promise.all(old.filter(key => key !== previous).map(key => caches.delete(key)));
+  }).then(() => self.clients.claim()));
 });
 
-self.addEventListener('fetch', (event) => {
-  const req = event.request;
-  if (req.method !== 'GET') return;
-
-  // Навигация: сначала сеть, при офлайне — из кэша index.html.
-  if (req.mode === 'navigate') {
-    event.respondWith(
-      fetch(new Request(req, { cache: 'reload' })).catch(() => caches.match('./index.html'))
-    );
-    return;
+async function resource(request, build) {
+  let name = CACHE_NAME;
+  if (build && build !== BUILD) {
+    const keys = await caches.keys();
+    name = keys.find(key => /^boygame-v\d+-/.test(key) && key.endsWith('-' + build));
+    if (!name) return new Response('Application update required', { status: 409 });
   }
+  const cache = await caches.open(name);
+  const cached = await cache.match(request, { ignoreSearch: true });
+  if (cached) return cached;
+  // Временная утрата браузерного кэша: текущие файлы можно восстановить по сети.
+  // Старую сборку подменять текущими файлами нельзя.
+  if (build) return new Response('Application update required', { status: 409 });
+  return fetch(request);
+}
 
-  // При сети обновляем файлы сразу, чтобы не задерживать новые версии приложения.
-  // Если сети нет, продолжаем отдавать сохранённый офлайн-кэш.
-  event.respondWith(
-    fetch(new Request(req, { cache: 'reload' })).then((res) => {
-      if (res && res.status === 200 && res.type === 'basic') {
-        return caches.open(CACHE).then((cache) =>
-          cache.put(req, res.clone()).then(() => res)
-        );
-      }
-      return res;
-    }).catch(() => {
-      return caches.match(req).then((cached) => {
-        return cached;
-      });
-    })
-  );
+self.addEventListener('fetch', event => {
+  const request = event.request;
+  if (request.method !== 'GET') return;
+  const url = new URL(request.url, SCOPE);
+  if (url.origin !== new URL(SCOPE).origin) return;
+  const scopePath = new URL(SCOPE).pathname;
+  if (request.mode === 'navigate') {
+    if (url.pathname !== scopePath && url.pathname !== scopePath + 'index.html') return;
+    // Оболочка и модули берутся из одной активной сборки до принятия обновления.
+    event.respondWith(resource(new Request(new URL('./index.html', SCOPE).href), null));
+  } else if (PATHS.has(url.pathname)) {
+    event.respondWith(resource(request, url.searchParams.get('build')));
+  }
+  // API и посторонние ресурсы не сохраняются в офлайн-кэш.
 });

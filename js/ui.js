@@ -91,40 +91,60 @@
   }
 
   // Генератор, который не повторяет уже выданные элементы (по ключу).
-  function uniqueGenerator(make, keyFn, maxTries, historyKey) {
+  function uniqueGenerator(make, keyFn, maxTries, historyKey, pool) {
     maxTries = maxTries || 60;
-    var seen = {};
-    var persistentSeen = {};
+    var seen = Object.create(null);
+    var persistentSeen = Object.create(null);
     if (historyKey && global.Store && global.Store.taskHistory) {
       global.Store.taskHistory(historyKey).forEach(function (key) { persistentSeen[key] = 1; });
     }
-    function next() {
-      var item, key, fresh = false;
+    function next(prefer) {
+      var item, key, fresh = false, fallback = null;
+      next.exhausted = false;
+      if (pool) {
+        var remaining = pool().filter(function (candidate) {
+          var signature = keyFn(candidate);
+          return seen[signature] === undefined && persistentSeen[signature] === undefined;
+        });
+        if (!remaining.length) { next.exhausted = true; return null; }
+        var preferred = typeof prefer === 'function' ? remaining.filter(prefer) : remaining;
+        item = pick(preferred.length ? preferred : remaining);
+        key = keyFn(item);
+        seen[key] = persistentSeen[key] = 1;
+        if (historyKey && global.Store) global.Store.rememberTask(historyKey, key);
+        return item;
+      }
       for (var i = 0; i < maxTries; i++) {
         item = make();
         key = keyFn(item);
         if (seen[key] === undefined && persistentSeen[key] === undefined) {
-          seen[key] = 1;
-          persistentSeen[key] = 1;
-          if (historyKey && global.Store && global.Store.rememberTask) {
-            global.Store.rememberTask(historyKey, key, 1000);
+          if (typeof prefer === 'function' && !prefer(item)) {
+            if (!fallback) fallback = { item: item, key: key };
+            continue;
           }
           fresh = true;
           break;
         }
       }
+      if (!fresh && fallback) { item = fallback.item; key = fallback.key; fresh = true; }
+      if (fresh) {
+        seen[key] = persistentSeen[key] = 1;
+        if (historyKey && global.Store && global.Store.rememberTask) global.Store.rememberTask(historyKey, key, 1000);
+      }
       return fresh ? item : null;
     }
-    next.reset = function () { seen = {}; };
+    next.reset = function () { seen = Object.create(null); };
     return next;
   }
 
-  function showTaskPoolExhausted(root, App) {
+  function showTaskPoolExhausted(root, App, generator) {
+    var exhausted = !generator || generator.exhausted === true;
     clear(root);
     root.appendChild(el('div', { class: 'chess-course-complete' }, [
       el('div', { class: 'chess-course-icon' }, '✅'),
-      el('h2', {}, t('common.tasksComplete')),
-      el('p', {}, t('common.tasksCompleteText')),
+      el('h2', {}, t(exhausted ? 'common.tasksComplete' : 'common.taskSearchRetry')),
+      el('p', {}, t(exhausted ? 'common.tasksCompleteText' : 'common.taskSearchRetryText')),
+      exhausted ? null : el('button', { type: 'button', class: 'btn primary wide', onclick: function () { App.startGame(App.current); } }, t('common.again')),
       el('button', { type: 'button', class: 'btn primary wide', onclick: function () { App.goHome(); } }, '🏠 ' + t('chess.home'))
     ]));
   }

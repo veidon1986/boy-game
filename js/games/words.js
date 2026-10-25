@@ -84,11 +84,9 @@
 
     root.appendChild(el('p', { class: 'game-hint' }, t('game.words.hint')));
 
-    var difficulty = UI.segmented([
-      { value: 'easy', label: t('common.easy') },
-      { value: 'medium', label: t('common.medium') },
-      { value: 'hard', label: t('common.hard') }
-    ], level, function (v) {
+    var difficulty = UI.segmented(App.gameLevels('words').map(function (lv) {
+      return { value: lv, label: t('common.' + lv) };
+    }), level, function (v) {
       level = v;
       adaptive.setLevel(v);
       newSession();
@@ -113,7 +111,7 @@
       if (timer) { clearTimeout(timer); timer = null; }
       if (round >= TOTAL) { finish(); return; }
       var task = gen();
-      if (!task) { UI.showTaskPoolExhausted(root, App); return; }
+      if (!task) { UI.showTaskPoolExhausted(root, App, gen); return; }
       round++;
       progress.textContent = t('common.round') + ' ' + round + ' ' + t('common.of') + ' ' + TOTAL;
       render(task);
@@ -173,12 +171,5 @@
     return function cleanup() { if (timer) clearTimeout(timer); };
   }
 
-  App.register({
-    id: 'words',
-    ages: ['school'],
-    emoji: '🔤',
-    titleKey: 'game.words',
-    descKey: 'game.words.desc',
-    start: start
-  });
+  App.register('words', start);
 })(window);

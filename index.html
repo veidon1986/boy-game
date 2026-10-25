@@ -17,6 +17,12 @@
   <meta name="apple-mobile-web-app-title" content="Игры" />
 
   <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/games/learning.css" />
+  <link rel="stylesheet" href="css/app-ui.css" />
+  <link rel="stylesheet" href="css/games/arcade.css" />
+  <link rel="stylesheet" href="css/games/board.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+  <link rel="stylesheet" href="css/theme.css" />
 </head>
 <body>
   <div id="app">
@@ -48,8 +54,11 @@
     <button id="skipSplashBtn" class="splash-skip" type="button">Пропустить</button>
   </section>
 
+  <script src="js/release.js"></script>
   <script src="js/i18n.js"></script>
   <script src="js/ages.js"></script>
+  <script src="js/task-history.js"></script>
+  <script src="js/usage-store.js"></script>
   <script src="js/store.js"></script>
   <script src="js/analytics-config.js"></script>
   <script src="js/analytics.js"></script>
@@ -57,26 +66,21 @@
   <script src="js/ui.js"></script>
   <script src="js/adaptive.js"></script>
   <script src="js/achievements.js"></script>
+  <script src="js/game-catalog.js"></script>
+  <script src="js/game-session.js"></script>
+  <script src="js/game-loader.js"></script>
+  <script src="js/play-time.js"></script>
   <script src="js/app.js"></script>
-  <script src="js/games/memory.js"></script>
-  <script src="js/games/sequence.js"></script>
-  <script src="js/games/sorting.js"></script>
-  <script src="js/games/math.js"></script>
-  <script src="js/games/odd.js"></script>
-  <script src="js/games/find.js"></script>
-  <script src="js/games/puzzle.js"></script>
-  <script src="js/games/shadow.js"></script>
-  <script src="js/games/story.js"></script>
-  <script src="js/games/maze.js"></script>
-  <script src="js/games/symmetry.js"></script>
-  <script src="js/games/robot.js"></script>
-  <script src="js/games/wordbuild.js"></script>
-  <script src="js/games/brain.js"></script>
-  <script src="js/games/words.js"></script>
-  <script src="js/games/runner.js"></script>
-  <script src="js/games/blocks.js"></script>
-  <script src="js/games/checkers.js"></script>
-  <script src="js/games/chess.js"></script>
+  <script src="js/app/profiles.js"></script>
+  <script src="js/app/home.js"></script>
+  <script src="js/app/parents.js"></script>
+  <script src="js/app/privacy.js"></script>
+  <script src="js/app/admin.js"></script>
+  <script src="js/app/rewards.js"></script>
+  <script src="js/app/dialogs.js"></script>
+  <script src="js/app/play-time.js"></script>
+  <!-- games:start (modules loaded on demand from GameCatalog) -->
+  <!-- games:end -->
   <script src="js/main.js"></script>
 </body>
 </html>

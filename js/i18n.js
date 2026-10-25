@@ -1096,6 +1096,21 @@
     }
   };
 
+  STRINGS.ru['game.unavailable'] = 'Эта игра пока недоступна для выбранного возраста.';
+  STRINGS.en['game.unavailable'] = 'This game is not available for the selected age yet.';
+  STRINGS.ru['game.startFailed'] = 'Не удалось открыть игру. Попробуйте ещё раз.';
+  STRINGS.en['game.startFailed'] = 'Could not open the game. Please try again.';
+  STRINGS.ru['game.loading'] = 'Открываем игру…';
+  STRINGS.en['game.loading'] = 'Opening the game…';
+  STRINGS.ru['common.taskSearchRetry'] = 'Подберём другое задание';
+  STRINGS.en['common.taskSearchRetry'] = 'Let’s find another task';
+  STRINGS.ru['common.taskSearchRetryText'] = 'Пока не удалось подобрать новое задание. Попробуйте ещё раз: история прохождения сохранится.';
+  STRINGS.en['common.taskSearchRetryText'] = 'A new task could not be selected yet. Try again; your task history will be kept.';
+  STRINGS.ru['storage.upgradeRequired'] = 'Обновите приложение, чтобы открыть сохранённые данные.';
+  STRINGS.en['storage.upgradeRequired'] = 'Update the app to open your saved data.';
+  STRINGS.ru['storage.writeFailed'] = 'Не удалось сохранить изменения на устройстве. Проверьте свободное место.';
+  STRINGS.en['storage.writeFailed'] = 'Changes could not be saved on this device. Check the available storage.';
+
   var current = 'ru';
 
   function setLang(lang) {

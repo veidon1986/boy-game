@@ -133,7 +133,7 @@
 
     root.appendChild(el('p', { class: 'game-hint' }, t('game.sequence.hint')));
 
-    var difficulty = UI.segmented(Ages.levels(age).map(function (lv) {
+    var difficulty = UI.segmented(App.gameLevels('sequence').map(function (lv) {
       return { value: lv, label: t('common.' + lv) };
     }), level, function (v) { level = v; adaptive.setLevel(v); newSession(); });
 
@@ -158,11 +158,9 @@
       if (round >= TOTAL) { finish(); return; }
       round++;
       progress.textContent = t('common.round') + ' ' + round + ' ' + t('common.of') + ' ' + TOTAL;
-      var data = gen();
-      if (!data) { UI.showTaskPoolExhausted(root, App); return; }
+      var data = gen(function (candidate) { return candidate.tag !== lastTag; });
+      if (!data) { UI.showTaskPoolExhausted(root, App, gen); return; }
       // по возможности не даём два одинаковых типа задания подряд
-      var tries = 0;
-      while (data.tag === lastTag && tries < 6) { data = gen(); if (!data) { UI.showTaskPoolExhausted(root, App); return; } tries++; }
       lastTag = data.tag;
       render(data);
     }
@@ -230,12 +228,5 @@
     return function cleanup() { if (timer) clearTimeout(timer); };
   }
 
-  App.register({
-    id: 'sequence',
-    ages: ['preschool', 'junior', 'school'],
-    emoji: '🔢',
-    titleKey: 'game.sequence',
-    descKey: 'game.sequence.desc',
-    start: start
-  });
+  App.register('sequence', start);
 })(window);

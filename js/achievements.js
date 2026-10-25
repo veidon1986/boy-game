@@ -55,7 +55,7 @@
       var list = (global.App.ageGames ? global.App.ageGames() : (global.App.visibleGames ? global.App.visibleGames() : global.App.games));
       return list
         .filter(function (g) { return !g.noStars; })
-        .map(function (g) { return { id: g.id, titleKey: g.titleKey, levels: levels }; });
+        .map(function (g) { return { id: g.id, titleKey: g.titleKey, levels: global.App.gameLevels ? global.App.gameLevels(g.id) : levels }; });
     }
     return [];
   }

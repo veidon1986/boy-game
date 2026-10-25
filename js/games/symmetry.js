@@ -30,7 +30,7 @@
     }, 150, 'symmetry');
     var stats = el('div', { class: 'game-stats' });
     var stage = el('div', { class: 'symmetry-stage' });
-    var difficulty = UI.segmented(Ages.levels(age).map(function (lv) {
+    var difficulty = UI.segmented(App.gameLevels('symmetry').map(function (lv) {
       return { value: lv, label: t('common.' + lv) };
     }), level, function (v) { level = v; newSession(); });
     root.appendChild(el('p', { class: 'game-hint' }, t('game.symmetry.hint')));
@@ -51,13 +51,14 @@
       stats.textContent = t('common.round') + ' ' + round + ' ' + t('common.of') + ' ' + TOTAL;
       UI.clear(stage);
       var task = taskGenerator();
-      if (!task) { UI.showTaskPoolExhausted(root, App); return; }
+      if (!task) { UI.showTaskPoolExhausted(root, App, taskGenerator); return; }
       var size = task.size;
       var matrix = task.matrix;
       var targetRow = task.targetRow;
       var targetCol = task.targetCol;
       var answer = task.answer;
       var done = false;
+      var mistakes = 0;
       var boardWrap = el('div', { class: 'symmetry-wrap' });
       var board = el('div', { class: 'symmetry-board' });
       board.style.gridTemplateColumns = 'repeat(' + size + ', minmax(48px, 76px))';
@@ -81,10 +82,11 @@
               done = true;
               choices.querySelectorAll('button').forEach(function (choice) { choice.disabled = true; });
               button.classList.add('correct');
-              firstTry++;
+              if (!mistakes) firstTry++;
               Sound.play('win');
               timer = setTimeout(render, 650);
             } else {
+              mistakes++;
               button.classList.add('wrong');
               Sound.play('wrong');
               setTimeout(function () { button.classList.remove('wrong'); }, 450);
@@ -99,8 +101,5 @@
     return function cleanup() { if (timer) clearTimeout(timer); };
   }
 
-  App.register({
-    id: 'symmetry', ages: ['junior', 'school'], emoji: '🪞',
-    titleKey: 'game.symmetry', descKey: 'game.symmetry.desc', start: start
-  });
+  App.register('symmetry', start);
 })(window);

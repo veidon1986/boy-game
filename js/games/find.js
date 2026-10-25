@@ -63,7 +63,7 @@
       if (timer) { clearTimeout(timer); timer = null; }
       if (round >= TOTAL) { finish(); return; }
       var task = gen();
-      if (!task) { UI.showTaskPoolExhausted(root, App); return; }
+      if (!task) { UI.showTaskPoolExhausted(root, App, gen); return; }
       round++;
       render(task);
     }
@@ -125,12 +125,5 @@
     return function cleanup() { if (timer) clearTimeout(timer); };
   }
 
-  App.register({
-    id: 'find',
-    ages: ['toddler', 'preschool'],
-    emoji: '👀',
-    titleKey: 'game.find',
-    descKey: 'game.find.desc',
-    start: start
-  });
+  App.register('find', start);
 })(window);

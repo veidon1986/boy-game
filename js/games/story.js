@@ -27,10 +27,13 @@
     var storyGenerator = UI.uniqueGenerator(function () {
       var length = level === 'easy' ? 3 : (level === 'medium' ? 4 : 5);
       return UI.pick(STORIES).slice(0, length);
-    }, function (story) { return story.join(','); }, 120, 'story');
+    }, function (story) { return story.join(','); }, 120, 'story', function () {
+      var length = level === 'easy' ? 3 : (level === 'medium' ? 4 : 5);
+      return STORIES.map(function (story) { return story.slice(0, length); });
+    });
     var stats = el('div', { class: 'game-stats' });
     var stage = el('div', { class: 'story-stage' });
-    var difficulty = UI.segmented(Ages.levels(age).map(function (lv) {
+    var difficulty = UI.segmented(App.gameLevels('story').map(function (lv) {
       return { value: lv, label: t('common.' + lv) };
     }), level, function (v) { level = v; newSession(); });
     root.appendChild(el('p', { class: 'game-hint' }, t('game.story.hint')));
@@ -51,7 +54,7 @@
       stats.textContent = t('common.round') + ' ' + round + ' ' + t('common.of') + ' ' + TOTAL;
       UI.clear(stage);
       var story = storyGenerator();
-      if (!story) { UI.showTaskPoolExhausted(root, App); return; }
+      if (!story) { UI.showTaskPoolExhausted(root, App, storyGenerator); return; }
       var correctOrder = story.slice();
       var shuffled = UI.shuffle(story);
       var selected = [];
@@ -102,8 +105,5 @@
     return function cleanup() { if (timer) clearTimeout(timer); };
   }
 
-  App.register({
-    id: 'story', ages: ['preschool'], emoji: '📖',
-    titleKey: 'game.story', descKey: 'game.story.desc', start: start
-  });
+  App.register('story', start);
 })(window);

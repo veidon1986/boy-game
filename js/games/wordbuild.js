@@ -51,10 +51,14 @@
       var lang = I18N.getLang() === 'en' ? 'en' : 'ru';
       var length = level === 'easy' ? 3 : (level === 'medium' ? 4 : 5);
       return { lang: lang, item: UI.pick(WORDS[lang][length]) };
-    }, function (task) { return task.lang + '|' + task.item.word; }, 100, 'wordbuild');
+    }, function (task) { return task.lang + '|' + task.item.word; }, 100, 'wordbuild', function () {
+      var lang = I18N.getLang() === 'en' ? 'en' : 'ru';
+      var length = level === 'easy' ? 3 : (level === 'medium' ? 4 : 5);
+      return WORDS[lang][length].map(function (item) { return { lang: lang, item: item }; });
+    });
     var stats = el('div', { class: 'game-stats' });
     var stage = el('div', { class: 'wordbuild-stage' });
-    var difficulty = UI.segmented(Ages.levels(age).map(function (lv) {
+    var difficulty = UI.segmented(App.gameLevels('wordbuild').map(function (lv) {
       return { value: lv, label: t('common.' + lv) };
     }), level, function (v) { level = v; newSession(); });
     root.appendChild(el('p', { class: 'game-hint' }, t('game.wordbuild.hint')));
@@ -75,7 +79,7 @@
       stats.textContent = t('common.round') + ' ' + round + ' ' + t('common.of') + ' ' + TOTAL;
       UI.clear(stage);
       var task = wordGenerator();
-      if (!task) { UI.showTaskPoolExhausted(root, App); return; }
+      if (!task) { UI.showTaskPoolExhausted(root, App, wordGenerator); return; }
       var word = task.item;
       var letters = UI.shuffle(word.word.split('').map(function (letter, index) {
         return { letter: letter, id: index, used: false };
@@ -143,8 +147,5 @@
     return function cleanup() { if (timer) clearTimeout(timer); };
   }
 
-  App.register({
-    id: 'wordbuild', ages: ['school'], emoji: '🔠',
-    titleKey: 'game.wordbuild', descKey: 'game.wordbuild.desc', start: start
-  });
+  App.register('wordbuild', start);
 })(window);

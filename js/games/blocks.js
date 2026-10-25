@@ -221,8 +221,14 @@
     }
 
     function togglePause() {
-      if (!piece || !active) return;
-      paused = !paused;
+      if (paused) App.resumeGame();
+      else App.pauseGame();
+    }
+
+    function setPaused(value) {
+      if (!piece || !active) return false;
+      paused = value;
+      stopHold();
       pauseButton.textContent = '';
       pauseButton.setAttribute('aria-label', t(paused ? 'blocks.resume' : 'blocks.pause'));
       pauseButton.setAttribute('title', t(paused ? 'blocks.resume' : 'blocks.pause'));
@@ -341,18 +347,18 @@
 
     document.addEventListener('keydown', onKey);
     reset();
-    return function cleanup() {
-      active = false;
-      root.classList.remove('blocks-screen');
-      stopHold();
-      if (timer) { clearInterval(timer); timer = null; }
-      document.removeEventListener('keydown', onKey);
+    return {
+      pause: function () { return setPaused(true); },
+      resume: function () { return setPaused(false); },
+      destroy: function () {
+        active = false;
+        root.classList.remove('blocks-screen');
+        stopHold();
+        if (timer) { clearInterval(timer); timer = null; }
+        document.removeEventListener('keydown', onKey);
+      }
     };
   }
 
-  App.register({
-    id: 'blocks', ages: ['junior', 'school'], emoji: '🧱',
-    titleKey: 'game.blocks', descKey: 'game.blocks.desc',
-    requires: 'rank.master', noStars: true, start: start
-  });
+  App.register('blocks', start);
 })(window);

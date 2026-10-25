@@ -30,7 +30,7 @@
     var previousCorner = -1;
     var stats = el('div', { class: 'game-stats' });
     var stage = el('div', { class: 'maze-stage' });
-    var difficulty = UI.segmented(Ages.levels(age).map(function (lv) {
+    var difficulty = UI.segmented(App.gameLevels('maze').map(function (lv) {
       return { value: lv, label: t('common.' + lv) };
     }), level, function (v) { level = v; newSession(); });
     root.appendChild(el('p', { class: 'game-hint' }, t('game.maze.hint')));
@@ -92,7 +92,7 @@
 
       var size = level === 'easy' ? 4 : (level === 'medium' ? 5 : 6);
       var route = makeRoute(size);
-      if (!route) { UI.showTaskPoolExhausted(root, App); return; }
+      if (!route) { UI.showTaskPoolExhausted(root, App, { exhausted: false }); return; }
       var commands = [];
       var mistakes = 0;
       var locked = false;
@@ -247,8 +247,5 @@
     return function cleanup() { if (timer) clearTimeout(timer); };
   }
 
-  App.register({
-    id: 'maze', ages: ['junior', 'school'], emoji: '🧭',
-    titleKey: 'game.maze', descKey: 'game.maze.desc', start: start
-  });
+  App.register('maze', start);
 })(window);
