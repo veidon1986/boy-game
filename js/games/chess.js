@@ -6,8 +6,8 @@
   var t = global.t || function (key) { return key; };
   var SIZE = 8;
   var PIECES = {
-    wK: '♔', wQ: '♕', wR: '♖', wB: '♗', wN: '♘', wP: '♙',
-    bK: '♚', bQ: '♛', bR: '♜', bB: '♝', bN: '♞', bP: '♟'
+    wK: '🤴', wQ: '👸', wR: '🏰', wB: '🐘', wN: '🐴', wP: '🛡️',
+    bK: '🤴', bQ: '👸', bR: '🏰', bB: '🐘', bN: '🐴', bP: '🛡️'
   };
   var PIECE_NAMES = { K: 'king', Q: 'queen', R: 'rook', B: 'bishop', N: 'knight', P: 'pawn' };
   var KNIGHT_STEPS = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
@@ -16,6 +16,7 @@
   var BISHOP_DIRS = [[-1,-1],[-1,1],[1,-1],[1,1]];
   var PIECE_CARDS = ['pawn', 'rook', 'bishop', 'knight', 'queen', 'king'];
   var MOVE_ANIMATION_MS = 420;
+  var CAPTURE_ANIMATION_MS = 720;
 
   function inside(r, c) { return r >= 0 && r < SIZE && c >= 0 && c < SIZE; }
   function colorOf(piece) { return piece ? piece.charAt(0) : ''; }
@@ -446,8 +447,8 @@
       ]));
       root.appendChild(el('div', { class: 'chess-piece-card' }, [
         el('div', { class: 'chess-piece-pair' }, [
-          el('span', { class: 'chess-piece white' }, PIECES['w' + pieceCode]),
-          el('span', { class: 'chess-piece black' }, PIECES['b' + pieceCode])
+          el('span', { class: 'chess-piece white chess-kind-' + pieceCode }, PIECES['w' + pieceCode]),
+          el('span', { class: 'chess-piece black chess-kind-' + pieceCode }, PIECES['b' + pieceCode])
         ]),
         el('h2', {}, t('chess.piece.' + pieceName)),
         el('section', {}, [
@@ -596,6 +597,9 @@
       var selected = null;
       var animateLastMove = false;
       var animatedPiece = null;
+      var captureEffect = null;
+      var captureTimer = null;
+      var interactionLockedUntil = 0;
       var ended = false;
       var clockInterval = null;
       var clockDeadline = 0;
@@ -679,7 +683,9 @@
                   (state.lastMove.to.r === row && state.lastMove.to.c === col))) classes += ' last-move';
               var contents = [];
               if (piece) {
-                var pieceNode = el('span', { class: 'chess-piece ' + (colorOf(piece) === 'w' ? 'white' : 'black') }, PIECES[piece]);
+                var pieceNode = el('span', {
+                  class: 'chess-piece ' + (colorOf(piece) === 'w' ? 'white' : 'black') + ' chess-kind-' + typeOf(piece)
+                }, PIECES[piece]);
                 var move = state.lastMove;
                 var from = null;
                 if (animateLastMove && move && row === move.to.r && col === move.to.c && piece === animatedPiece) from = move.from;
@@ -691,12 +697,23 @@
                 if (from) {
                   classes += ' moving-piece';
                   pieceNode.classList.add('chess-piece-moving');
-                  pieceNode.style.setProperty('--move-x', ((from.c - col) * 100) + '%');
-                  pieceNode.style.setProperty('--move-y', ((from.r - row) * 100) + '%');
+                  pieceNode.style.setProperty('--move-x', ((from.c - col) * 119.05) + '%');
+                  pieceNode.style.setProperty('--move-y', ((from.r - row) * 119.05) + '%');
                 }
                 contents.push(pieceNode);
               }
               contents = contents.concat(coordinateMarkers(row, col));
+              if (captureEffect && captureEffect.r === row && captureEffect.c === col) {
+                contents.push(el('span', {
+                  class: 'magic-capture-ghost chess-capture-ghost ' +
+                    (colorOf(captureEffect.piece) === 'w' ? 'white' : 'black') + ' chess-kind-' + typeOf(captureEffect.piece),
+                  'aria-hidden': 'true'
+                }, PIECES[captureEffect.piece]));
+                contents.push(el('span', {
+                  class: 'magic-capture-burst chess-capture-burst chess-capture-' + typeOf(captureEffect.piece),
+                  'aria-hidden': 'true'
+                }, '✨'));
+              }
               boardEl.appendChild(el('button', {
                 type: 'button', class: classes, role: 'gridcell',
                 'aria-label': t('chess.square', { square: squareName({ r: row, c: col }) }),
@@ -713,7 +730,7 @@
       }
 
       function choose(r, c) {
-        if (ended || (computer && state.turn === 'b')) return;
+        if (ended || Date.now() < interactionLockedUntil || (computer && state.turn === 'b')) return;
         var chosen = selectionMoves.filter(function (move) { return move.to.r === r && move.to.c === c; })[0];
         if (chosen) {
           if (chosen.promotion) showPromotion(chosen);
@@ -740,8 +757,20 @@
         }
         var board = state.board;
         var piece = board[move.from.r][move.from.c];
-        var captured = board[move.to.r][move.to.c] || move.enPassant;
+        var captureSquare = move.enPassant ? { r: move.from.r, c: move.to.c } : move.to;
+        var capturedPiece = board[captureSquare.r][captureSquare.c];
+        var captured = !!capturedPiece || move.enPassant;
         var notation = moveNotation(move, captured, promoteTo);
+        if (capturedPiece) {
+          captureEffect = { r: captureSquare.r, c: captureSquare.c, piece: capturedPiece };
+          interactionLockedUntil = Date.now() + CAPTURE_ANIMATION_MS;
+          if (captureTimer) clearTimeout(captureTimer);
+          captureTimer = setTimeout(function () {
+            captureEffect = null;
+            captureTimer = null;
+            if (!stopped) paint();
+          }, CAPTURE_ANIMATION_MS);
+        }
         updateRights(state.castling, board, move);
         state.board = applyMove(board, move, promoteTo);
         state.enPassant = typeOf(piece) === 'P' && Math.abs(move.to.r - move.from.r) === 2 ?
@@ -767,7 +796,7 @@
           ended = true;
           stopClock();
           controls.querySelectorAll('button').forEach(function (button) { button.disabled = true; });
-          endTimer = setTimeout(function () { showEnd(checked, false); }, MOVE_ANIMATION_MS);
+          endTimer = setTimeout(function () { showEnd(checked, false); }, captured ? CAPTURE_ANIMATION_MS + 120 : MOVE_ANIMATION_MS);
         } else if (inCheck(state.board, state.turn)) {
           notation += '+';
           logMove(notation);
@@ -855,6 +884,7 @@
         ended = true;
         stopClock();
         if (endTimer) { clearTimeout(endTimer); endTimer = null; }
+        if (captureTimer) { clearTimeout(captureTimer); captureTimer = null; }
       };
       paint();
     }

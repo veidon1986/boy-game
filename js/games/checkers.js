@@ -7,6 +7,7 @@
   var SIZE = 8;
   var RED = 1;
   var BLUE = -1;
+  var CAPTURE_ANIMATION_MS = 720;
 
   var RULE_CARDS = [
     { title: 'checkers.school.rules.board.title', text: 'checkers.school.rules.board.text' },
@@ -34,6 +35,11 @@
   function side(piece) { return piece > 0 ? RED : (piece < 0 ? BLUE : 0); }
   function inside(r, c) { return r >= 0 && r < SIZE && c >= 0 && c < SIZE; }
   function key(r, c) { return r + ',' + c; }
+  function checkerNode(piece) {
+    return el('span', {
+      class: 'checkers-piece ' + (side(piece) === RED ? 'red' : 'blue') + (Math.abs(piece) === 2 ? ' king' : '')
+    }, el('span', { class: 'checkers-token' }, side(piece) === RED ? '🦊' : '🐧'));
+  }
 
   function capturesFor(board, r, c, piece) {
     var found = [];
@@ -116,6 +122,11 @@
     var selected = null;
     var forcedFrom = null;
     var finished = false;
+    var moveEffect = null;
+    var captureEffects = [];
+    var captureTimer = null;
+    var finishTimer = null;
+    var interactionLockedUntil = 0;
     var status = el('div', { class: 'game-stats checkers-status', 'aria-live': 'polite' });
     var boardEl = el('div', { class: 'checkers-board', role: 'grid', 'aria-label': t('game.checkers') });
     var stage = el('div', { class: 'checkers-stage' }, [status, boardEl]);
@@ -129,6 +140,11 @@
     function playerName(team) { return t(team === RED ? 'checkers.red' : 'checkers.blue'); }
 
     function startPosition() {
+      if (captureTimer) { clearTimeout(captureTimer); captureTimer = null; }
+      if (finishTimer) { clearTimeout(finishTimer); finishTimer = null; }
+      moveEffect = null;
+      captureEffects = [];
+      interactionLockedUntil = 0;
       board = [];
       for (var r = 0; r < SIZE; r++) {
         var row = [];
@@ -183,20 +199,37 @@
               onclick: function () { choose(row, col); }
             });
             if (piece) {
-              square.appendChild(el('span', {
-                class: 'checkers-piece ' + (side(piece) === RED ? 'red' : 'blue') + (Math.abs(piece) === 2 ? ' king' : '')
-              }, Math.abs(piece) === 2 ? '♛' : ''));
+              var pieceNode = checkerNode(piece);
+              if (moveEffect && moveEffect.to.r === row && moveEffect.to.c === col) {
+                pieceNode.classList.add('checkers-piece-moving');
+                pieceNode.style.setProperty('--move-x', ((moveEffect.from.c - col) * 100) + '%');
+                pieceNode.style.setProperty('--move-y', ((moveEffect.from.r - row) * 100) + '%');
+              }
+              square.appendChild(pieceNode);
             }
+            captureEffects.forEach(function (effect) {
+              if (effect.r !== row || effect.c !== col) return;
+              var ghost = checkerNode(effect.piece);
+              var captureKind = Math.abs(effect.piece) === 2 ? 'king' : 'man';
+              ghost.classList.add('magic-capture-ghost', 'checkers-capture-ghost', 'checkers-capture-' + captureKind);
+              ghost.setAttribute('aria-hidden', 'true');
+              square.appendChild(ghost);
+              square.appendChild(el('span', {
+                class: 'magic-capture-burst checkers-capture-burst checkers-capture-' + captureKind,
+                'aria-hidden': 'true'
+              }, '✨'));
+            });
             boardEl.appendChild(square);
             squares.push(square);
           })(r, c);
         }
       }
+      moveEffect = null;
       updateStatus();
     }
 
     function choose(r, c) {
-      if (finished) return;
+      if (finished || Date.now() < interactionLockedUntil) return;
       var moves = legal();
       var chosen = moves.filter(function (move) {
         return selected && move.from.r === selected.r && move.from.c === selected.c && move.to.r === r && move.to.c === c;
@@ -219,11 +252,25 @@
 
     function playMove(move) {
       var piece = board[move.from.r][move.from.c];
+      var capturedPieces = move.captured.map(function (at) {
+        return { r: at.r, c: at.c, piece: board[at.r][at.c] };
+      });
       board[move.from.r][move.from.c] = 0;
       move.captured.forEach(function (at) { board[at.r][at.c] = 0; });
       board[move.to.r][move.to.c] = piece;
       if (piece === RED && move.to.r === 0) board[move.to.r][move.to.c] = RED * 2;
       if (piece === BLUE && move.to.r === SIZE - 1) board[move.to.r][move.to.c] = BLUE * 2;
+      moveEffect = { from: move.from, to: move.to };
+      if (capturedPieces.length) {
+        captureEffects = capturedPieces;
+        interactionLockedUntil = Date.now() + CAPTURE_ANIMATION_MS;
+        if (captureTimer) clearTimeout(captureTimer);
+        captureTimer = setTimeout(function () {
+          captureEffects = [];
+          captureTimer = null;
+          if (!finished) paint();
+        }, CAPTURE_ANIMATION_MS);
+      }
       Sound.play('tap');
 
       if (move.captured.length) {
@@ -244,7 +291,14 @@
       board.forEach(function (row) {
         row.forEach(function (value) { if (side(value) === turn) opponentPieces++; });
       });
-      if (!opponentPieces || !legal().length) finish(-turn);
+      if (!opponentPieces || !legal().length) {
+        if (capturedPieces.length) {
+          finishTimer = setTimeout(function () {
+            finishTimer = null;
+            finish(-turn);
+          }, CAPTURE_ANIMATION_MS + 120);
+        } else finish(-turn);
+      }
     }
 
     function finish(winner) {
@@ -266,7 +320,11 @@
     }, t('checkers.newGame')));
 
     startPosition();
-    return function cleanup() { finished = true; };
+    return function cleanup() {
+      finished = true;
+      if (captureTimer) clearTimeout(captureTimer);
+      if (finishTimer) clearTimeout(finishTimer);
+    };
   }
 
   function start(root, App) {
@@ -380,9 +438,7 @@
                 'aria-label': t('checkers.square', { row: row + 1, col: col + 1 }),
                 onclick: function () { choose(row, col); }
               });
-              if (value) square.appendChild(el('span', {
-                class: 'checkers-piece ' + (side(value) === RED ? 'red' : 'blue') + (Math.abs(value) === 2 ? ' king' : '')
-              }, Math.abs(value) === 2 ? '♛' : ''));
+              if (value) square.appendChild(checkerNode(value));
               boardEl.appendChild(square);
             })(r, c);
           }

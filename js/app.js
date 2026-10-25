@@ -4,7 +4,13 @@
 
   var el = UI.el;
   var games = [];
-  var demoMode = false;
+  var localTestHost = global.location && (
+    global.location.hostname === 'localhost' ||
+    global.location.hostname === '127.0.0.1' ||
+    global.location.hostname === '::1' ||
+    global.location.hostname === '[::1]'
+  );
+  var demoMode = !!(localTestHost && global.location.search && /(?:^|[?&])test=1(?:&|$)/.test(global.location.search));
 
   var AVATARS = ['🦁', '🐼', '🦊', '🐸', '🐵', '🐯', '🐨', '🐷',
                  '🐙', '🦄', '🐢', '🐝', '🚀', '⚽', '🌟', '🎈'];
